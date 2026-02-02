@@ -1,0 +1,40 @@
+version = 1
+SPDX-PackageName = "mockserver"
+SPDX-PackageSupplier = "Will Dixon"
+SPDX-PackageDownloadLocation = "https://github.com/wdixon/mockserver"
+
+[[annotations]]
+path = [".envrc", ".gitignore", ".nvim.lua", "Cargo.toml", "flake.nix"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2025 Will Dixon"
+SPDX-License-Identifier = "AGPL-3.0-only"
+
+[[annotations]]
+path = ".config/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2025 Will Dixon"
+SPDX-License-Identifier = "AGPL-3.0-only"
+
+[[annotations]]
+path = "src/templates/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2025 Will Dixon"
+SPDX-License-Identifier = "AGPL-3.0-only"
+
+[[annotations]]
+path = "scripts/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2025 Will Dixon"
+SPDX-License-Identifier = "AGPL-3.0-only"
+
+[[annotations]]
+path = ["Cargo.lock", "flake.lock"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2025 Will Dixon"
+SPDX-License-Identifier = "AGPL-3.0-only"
+
+[[annotations]]
+path = ["**.md", "docs/**.md"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2025 Will Dixon"
+SPDX-License-Identifier = "AGPL-3.0-only"

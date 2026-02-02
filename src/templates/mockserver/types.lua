@@ -1,0 +1,24 @@
+-- .mockserver/types.lua
+-- EmmyLua type definitions for mockserver
+
+---@meta
+
+---The request object passed to handle()
+---@class Request
+---@field method string HTTP method ("GET", "POST", "PUT", "DELETE", etc.)
+---@field path string Request path (e.g., "/api/users/123")
+---@field query table<string, string> Query parameters as strings
+---@field headers table<string, string> Request headers (keys are lowercase)
+---@field body string Raw request body as string
+---@field domain string The domain this request was routed to
+
+---The response object returned from handle()
+---@class Response
+---@field status? integer HTTP status code (defaults to 200)
+---@field headers? table<string, string> Response headers
+---@field body? string Response body
+
+---Handle an incoming HTTP request
+---@param request Request The incoming request
+---@return Response response The response to send
+function handle(request) end

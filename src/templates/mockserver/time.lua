@@ -1,0 +1,29 @@
+-- .mockserver/time.lua
+---@meta
+
+---@class time
+local time = {}
+
+---Get the current Unix timestamp in seconds
+---@return integer timestamp Unix timestamp
+---@nodiscard
+function time.now() end
+
+---Get the current Unix timestamp in milliseconds
+---@return integer timestamp Unix timestamp in milliseconds
+---@nodiscard
+function time.now_ms() end
+
+---Get the current time as an ISO 8601 string
+---@return string formatted ISO 8601 formatted string
+---@nodiscard
+function time.iso8601() end
+
+---Format a timestamp using a custom format string
+---@param format string Format string (strftime syntax)
+---@param timestamp? integer Unix timestamp (defaults to now)
+---@return string formatted Formatted time string
+---@nodiscard
+function time.format(format, timestamp) end
+
+return time

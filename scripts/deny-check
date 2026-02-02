@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+exec cargo deny check -c .config/deny.toml "$@"

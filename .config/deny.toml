@@ -1,0 +1,48 @@
+# cargo-deny configuration
+# https://embarkstudios.github.io/cargo-deny/
+
+[graph]
+targets = [
+  # Linux
+  "x86_64-unknown-linux-gnu",
+  "aarch64-unknown-linux-gnu",
+  # macOS
+  "x86_64-apple-darwin",
+  "aarch64-apple-darwin",
+  # Windows
+  "x86_64-pc-windows-msvc",
+  "aarch64-pc-windows-msvc",
+]
+
+[licenses]
+allow = ["AGPL-3.0-only", "MIT", "Apache-2.0", "Unlicense"]
+confidence-threshold = 0.8
+exceptions = [
+  { allow = [
+    "BSD-3-Clause",
+  ], crate = "matchit" },
+  { allow = [
+    "CC0-1.0",
+  ], crate = "notify" },
+  { allow = [
+    "ISC",
+  ], crate = "inotify" },
+  { allow = [
+    "ISC",
+  ], crate = "inotify-sys" },
+  { allow = [
+    "Unicode-3.0",
+  ], crate = "unicode-ident" },
+  { allow = [
+    "Zlib",
+  ], crate = "foldhash" },
+]
+
+[bans]
+skip = [
+  { crate = "windows-sys@0.60.2", reason = "notify and socket2 use older windows-sys" },
+  { crate = "hashbrown@0.14.5", reason = "dashmap is using an older version" },
+]
+
+[sources]
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

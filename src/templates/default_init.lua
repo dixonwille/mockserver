@@ -1,0 +1,21 @@
+-- _default/init.lua
+-- Fallback handler for unmatched domains
+
+local json = require("json")
+
+---@param request Request
+---@return Response
+function handle(request)
+    ---@type Response
+    return {
+        status = 404,
+        headers = {
+            ["Content-Type"] = "application/json"
+        },
+        body = json.encode({
+            error = "Not Found",
+            message = "No mock configured for domain: " .. request.domain,
+            path = request.path
+        })
+    }
+end

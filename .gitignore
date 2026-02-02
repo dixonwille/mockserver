@@ -1,0 +1,30 @@
+# Rust
+/target/
+
+# Nix
+/result
+.direnv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Mockserver runtime
+/data/
+*.db
+*.db-wal
+*.db-shm
+
+# OS
+.DS_Store
+Thumbs.db
+
+
+# Added by cargo
+
+/target
+
+THIRD_PARTY_LICENSES

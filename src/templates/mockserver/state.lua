@@ -1,0 +1,26 @@
+-- .mockserver/state.lua
+---@meta
+
+---@class state
+---Per-domain persistent key-value storage
+local state = {}
+
+---Get a value from the state store
+---@param key string The key to look up
+---@return any|nil value The stored value, or nil if not found
+---@nodiscard
+function state.get(key) end
+
+---Set a value in the state store
+---@param key string The key to store under
+---@param value any The value to store
+function state.set(key, value) end
+
+---Delete a value from the state store
+---@param key string The key to delete
+function state.delete(key) end
+
+---Clear all values from the state store
+function state.clear() end
+
+return state

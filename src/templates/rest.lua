@@ -1,0 +1,58 @@
+-- {{DOMAIN}}/init.lua
+-- REST API mock handler
+
+local json = require("json")
+
+-- In-memory data store
+local users = {
+    { id = 1, name = "Alice", email = "alice@example.com" },
+    { id = 2, name = "Bob", email = "bob@example.com" }
+}
+
+---@param status integer
+---@param data any
+---@return Response
+local function json_response(status, data)
+    ---@type Response
+    return {
+        status = status,
+        headers = { ["Content-Type"] = "application/json" },
+        body = json.encode(data)
+    }
+end
+
+---@param request Request
+---@return Response
+function handle(request)
+    -- GET /users - List all users
+    if request.method == "GET" and request.path == "/users" then
+        return json_response(200, { users = users })
+    end
+
+    -- GET /users/:id - Get a specific user
+    local user_id = request.path:match("^/users/(%d+)$")
+    if request.method == "GET" and user_id then
+        local id = tonumber(user_id)
+        for _, user in ipairs(users) do
+            if user.id == id then
+                return json_response(200, user)
+            end
+        end
+        return json_response(404, { error = "User not found" })
+    end
+
+    -- POST /users - Create a new user
+    if request.method == "POST" and request.path == "/users" then
+        local data = json.decode(request.body)
+        local new_user = {
+            id = #users + 1,
+            name = data.name,
+            email = data.email
+        }
+        table.insert(users, new_user)
+        return json_response(201, new_user)
+    end
+
+    -- 404 for unmatched routes
+    return json_response(404, { error = "Not found", path = request.path })
+end

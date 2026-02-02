@@ -1,0 +1,67 @@
+-- {{DOMAIN}}/init.lua
+-- GraphQL mock handler
+
+local json = require("json")
+
+-- Sample data
+local users = {
+    { id = "1", name = "Alice", email = "alice@example.com" },
+    { id = "2", name = "Bob", email = "bob@example.com" }
+}
+
+---@param data any
+---@return Response
+local function graphql_response(data)
+    ---@type Response
+    return {
+        status = 200,
+        headers = { ["Content-Type"] = "application/json" },
+        body = json.encode(data)
+    }
+end
+
+---@param request Request
+---@return Response
+function handle(request)
+    -- GraphQL endpoint
+    if request.method == "POST" and request.path == "/graphql" then
+        local body = json.decode(request.body)
+        local query = body.query or ""
+
+        -- Simple query matching (in production, use a proper GraphQL parser)
+        if query:match("query%s*{%s*users") then
+            return graphql_response({ data = { users = users } })
+        end
+
+        if query:match("query%s*{%s*user") then
+            local id = body.variables and body.variables.id
+            for _, user in ipairs(users) do
+                if user.id == id then
+                    return graphql_response({ data = { user = user } })
+                end
+            end
+            return graphql_response({ data = { user = nil } })
+        end
+
+        return graphql_response({
+            errors = {{ message = "Unknown query" }}
+        })
+    end
+
+    -- GraphQL playground/introspection
+    if request.method == "GET" and request.path == "/graphql" then
+        ---@type Response
+        return {
+            status = 200,
+            headers = { ["Content-Type"] = "text/html" },
+            body = "<html><body><h1>GraphQL Playground</h1><p>POST queries to /graphql</p></body></html>"
+        }
+    end
+
+    ---@type Response
+    return {
+        status = 404,
+        headers = { ["Content-Type"] = "application/json" },
+        body = json.encode({ error = "Not found" })
+    }
+end

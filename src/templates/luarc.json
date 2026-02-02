@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+  "workspace": {
+    "library": [".mockserver"],
+    "checkThirdParty": false
+  },
+  "runtime": {
+    "version": "Lua 5.5"
+  },
+  "diagnostics": {
+    "globals": ["handle"]
+  },
+  "hint": {
+    "enable": true,
+    "setType": true,
+    "paramName": "All"
+  },
+  "type": {
+    "castNumberToInteger": true
+  }
+}

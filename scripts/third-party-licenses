@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+cargo about generate -c .config/about.toml .config/about.hbs > THIRD_PARTY_LICENSES
+echo "Generated THIRD_PARTY_LICENSES"

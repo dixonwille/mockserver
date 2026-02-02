@@ -1,0 +1,22 @@
+THIRD-PARTY LICENSES
+
+This binary includes code from the following third-party Rust crates:
+
+{{#each licenses}}
+{{#each used_by}}
+- {{crate.name}} {{crate.version}} ({{../id}})
+{{/each}}
+{{/each}}
+
+================================================================================
+FULL LICENSE TEXTS
+================================================================================
+{{#each licenses}}
+
+--------------------------------------------------------------------------------
+{{name}}{{#if id}} ({{id}}){{/if}}
+Used by: {{#each used_by}}{{crate.name}}{{#unless @last}}, {{/unless}}{{/each}}
+--------------------------------------------------------------------------------
+
+{{{text}}}
+{{/each}}

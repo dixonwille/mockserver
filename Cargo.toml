@@ -1,0 +1,65 @@
+[package]
+name = "mockserver"
+version = "0.1.0"
+edition = "2024"
+description = "A Lua-powered mock server for API development"
+license = "AGPL-3.0-only"
+repository = "https://github.com/user/mockserver"
+
+[dependencies]
+# HTTP server
+axum = "0.8"
+tokio = { version = "1", features = [
+  "rt-multi-thread",
+  "macros",
+  "sync",
+  "time",
+  "net",
+] }
+tower = { version = "0.5", features = ["util"] }
+
+# Lua runtime (vendored = compile Lua from source, statically linked)
+mlua = { version = "0.11", features = ["lua55", "vendored", "send", "async"] }
+
+# Database (bundled = compile SQLite from source, statically linked)
+tokio-rusqlite = { version = "0.7", features = ["bundled"] }
+rusqlite_migration = "2.3.0"
+
+# File watching
+notify = "8"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# CLI
+clap = { version = "4", features = ["derive", "env"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Utilities
+dashmap = "6"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+bytes = "1"
+http = "1"
+futures = "0.3"
+urlencoding = "2"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
+
+[profile.dev]
+incremental = true
