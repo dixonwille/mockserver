@@ -359,7 +359,7 @@ mod tests {
         let response = app
             .oneshot(
                 Request::builder()
-                    .uri(&format!("/api/requests/{}", req.id))
+                    .uri(format!("/api/requests/{}", req.id))
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -385,7 +385,7 @@ mod tests {
         let response = app
             .oneshot(
                 Request::builder()
-                    .uri(&format!("/api/requests/{}", random_id))
+                    .uri(format!("/api/requests/{}", random_id))
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -430,7 +430,7 @@ mod tests {
         let response = app
             .oneshot(
                 Request::builder()
-                    .uri(&format!("/api/requests/{}/response", req.id))
+                    .uri(format!("/api/requests/{}/response", req.id))
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -456,7 +456,7 @@ mod tests {
         let response = app
             .oneshot(
                 Request::builder()
-                    .uri(&format!("/api/requests/{}/response", random_id))
+                    .uri(format!("/api/requests/{}/response", random_id))
                     .body(Body::empty())
                     .unwrap(),
             )

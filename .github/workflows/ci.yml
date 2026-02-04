@@ -1,0 +1,106 @@
+# SPDX-FileCopyrightText: 2026 Will Dixon
+# SPDX-License-Identifier: AGPL-3.0-only
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fmt:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all --check
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+
+  deny:
+    name: Cargo Deny
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command-arguments: --config .config/deny.toml
+
+  reuse:
+    name: REUSE Compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: fsfe/reuse-action@v5
+
+  build-and-test:
+    name: Build & Test (${{ matrix.os }})
+    needs: [fmt, clippy]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            run-on-pr: true
+          - os: macos-latest
+            run-on-pr: false
+          - os: windows-latest
+            run-on-pr: false
+    runs-on: ${{ matrix.os }}
+    if: ${{ always() && !cancelled() && !contains(needs.*.result, 'failure') }}
+    steps:
+      - uses: actions/checkout@v4
+        if: ${{ matrix.run-on-pr || github.event_name == 'push' }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        if: ${{ matrix.run-on-pr || github.event_name == 'push' }}
+
+      - uses: Swatinem/rust-cache@v2
+        if: ${{ matrix.run-on-pr || github.event_name == 'push' }}
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build release
+        if: ${{ matrix.run-on-pr || github.event_name == 'push' }}
+        run: cargo build --release
+
+      - name: Verify static linking (Linux)
+        if: ${{ (matrix.run-on-pr || github.event_name == 'push') && runner.os == 'Linux' }}
+        run: |
+          echo "Checking dynamic dependencies..."
+          ldd target/release/mockserver
+          echo "Verifying SQLite and Lua are NOT dynamically linked..."
+          ! ldd target/release/mockserver | grep -qiE "(sqlite|lua)" || exit 1
+          echo "Static linking verified!"
+
+      - name: Verify static linking (macOS)
+        if: ${{ (matrix.run-on-pr || github.event_name == 'push') && runner.os == 'macOS' }}
+        run: |
+          echo "Checking dynamic dependencies..."
+          otool -L target/release/mockserver
+          echo "Verifying SQLite and Lua are NOT dynamically linked..."
+          ! otool -L target/release/mockserver | grep -qiE "(sqlite|lua)" || exit 1
+          echo "Static linking verified!"
+
+      - name: Run tests
+        if: ${{ matrix.run-on-pr || github.event_name == 'push' }}
+        run: cargo test --all-features

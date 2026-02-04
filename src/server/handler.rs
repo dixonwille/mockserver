@@ -474,7 +474,7 @@ mod tests {
         let result = parse_query_string(Some("query=hello+world"));
         // URL encoding: + should remain as + (only %20 is space)
         // Actually urlencoding::decode converts + to space in query strings
-        assert!(result.get("query").is_some());
+        assert!(result.contains_key("query"));
     }
 
     // ==================== build_http_response tests ====================
