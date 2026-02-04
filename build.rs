@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 Will Dixon
+// SPDX-FileCopyrightText: 2026 mockserver contributors
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
@@ -32,9 +32,10 @@ fn main() {
 fn compute_version() -> String {
     // Try to get exact tag from git
     if let Some(tag) = get_git_exact_tag()
-        && let Some(version) = parse_tag_version(&tag) {
-            return version;
-        }
+        && let Some(version) = parse_tag_version(&tag)
+    {
+        return version;
+    }
 
     // No tag found, compute dev version
     compute_dev_version()

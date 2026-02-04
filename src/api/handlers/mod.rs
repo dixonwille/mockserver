@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 Will Dixon
+// SPDX-FileCopyrightText: 2026 mockserver contributors
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
@@ -11,7 +11,7 @@ mod requests;
 
 pub use cleanup::cleanup_requests;
 pub use config::{ReloadResponse, reload_config};
-pub use health::{HealthResponse, health_check};
+pub use health::{AboutResponse, HealthResponse, about, health_check};
 pub use requests::{
     DeleteResponse, ListRequestsQuery, ListRequestsResponse, RequestSummary, delete_requests,
     get_request, get_request_response, list_requests,

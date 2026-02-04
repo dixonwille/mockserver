@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-exec reuse annotate --license AGPL-3.0-only --copyright "Will Dixon" "$@"
+exec reuse annotate --license AGPL-3.0-only --copyright "mockserver contributors" "$@"

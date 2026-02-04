@@ -1,40 +1,63 @@
 version = 1
 SPDX-PackageName = "mockserver"
-SPDX-PackageSupplier = "Will Dixon"
+SPDX-PackageSupplier = "mockserver contributors"
 SPDX-PackageDownloadLocation = "https://github.com/wdixon/mockserver"
 
+# Core mockserver code - AGPL-3.0-only
 [[annotations]]
-path = [".envrc", ".gitignore", ".nvim.lua", "Cargo.toml", "flake.nix"]
+path = "Cargo.toml"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2025 Will Dixon"
+SPDX-FileCopyrightText = "2026 mockserver contributors"
 SPDX-License-Identifier = "AGPL-3.0-only"
+
+# Generated templates for users - CC0-1.0 (public domain)
+[[annotations]]
+path = "src/templates/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 mockserver contributors"
+SPDX-License-Identifier = "CC0-1.0"
+
+# Documentation - CC-BY-4.0
+[[annotations]]
+path = ["**.md", "docs/**.md"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 mockserver contributors"
+SPDX-License-Identifier = "CC-BY-4.0"
+
+# Lock files - CC0-1.0 (machine-generated)
+[[annotations]]
+path = ["Cargo.lock", "flake.lock"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 mockserver contributors"
+SPDX-License-Identifier = "CC0-1.0"
+
+# Auxiliary/infrastructure files - MIT
+[[annotations]]
+path = [".envrc", ".gitignore", ".nvim.lua", "flake.nix"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 mockserver contributors"
+SPDX-License-Identifier = "MIT"
 
 [[annotations]]
 path = ".config/**"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2025 Will Dixon"
-SPDX-License-Identifier = "AGPL-3.0-only"
-
-[[annotations]]
-path = "src/templates/**"
-precedence = "aggregate"
-SPDX-FileCopyrightText = "2025 Will Dixon"
-SPDX-License-Identifier = "AGPL-3.0-only"
+SPDX-FileCopyrightText = "2026 mockserver contributors"
+SPDX-License-Identifier = "MIT"
 
 [[annotations]]
 path = "scripts/**"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2025 Will Dixon"
-SPDX-License-Identifier = "AGPL-3.0-only"
+SPDX-FileCopyrightText = "2026 mockserver contributors"
+SPDX-License-Identifier = "MIT"
 
 [[annotations]]
-path = ["Cargo.lock", "flake.lock"]
+path = ".github/**"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2025 Will Dixon"
-SPDX-License-Identifier = "AGPL-3.0-only"
+SPDX-FileCopyrightText = "2026 mockserver contributors"
+SPDX-License-Identifier = "MIT"
 
 [[annotations]]
-path = ["**.md", "docs/**.md"]
+path = "Containerfile"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2025 Will Dixon"
-SPDX-License-Identifier = "AGPL-3.0-only"
+SPDX-FileCopyrightText = "2026 mockserver contributors"
+SPDX-License-Identifier = "MIT"

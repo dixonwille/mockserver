@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 description = "A Lua-powered mock server for API development"
 license = "AGPL-3.0-only"
-repository = "https://github.com/user/mockserver"
+repository = "https://github.com/dixonwille/mockserver"
 
 [dependencies]
 # HTTP server

@@ -1,7 +1,3 @@
-# SPDX-FileCopyrightText: 2026 Will Dixon
-#
-# SPDX-License-Identifier: AGPL-3.0-only
-
 # Multi-arch container for mockserver
 # Built using Podman/Buildah with distroless base for minimal attack surface
 

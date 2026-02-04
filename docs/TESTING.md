@@ -246,7 +246,7 @@ jobs:
 
           # Wait for server to be ready
           for i in {1..30}; do
-            if curl -s http://localhost:3001/api/health > /dev/null; then
+            if curl -s http://localhost:3001/api/healthz > /dev/null; then
               echo "mockserver is ready"
               break
             fi
@@ -297,7 +297,7 @@ services:
       MOCKSERVER_DIR: "/mocks"
       MOCKSERVER_DATA_DIR: "/data"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/healthz"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -413,7 +413,7 @@ export async function startMockServer(): Promise<void> {
   ]);
 
   // Wait for server to be ready
-  await waitForServer("http://localhost:3001/api/health");
+  await waitForServer("http://localhost:3001/api/healthz");
 }
 
 export async function stopMockServer(): Promise<void> {
@@ -550,7 +550,7 @@ def mockserver():
     # Wait for server to be ready
     for _ in range(30):
         try:
-            resp = requests.get("http://localhost:3001/api/health")
+            resp = requests.get("http://localhost:3001/api/healthz")
             if resp.ok:
                 break
         except requests.ConnectionError:
@@ -693,7 +693,7 @@ func StartMockServer(t *testing.T) *MockServer {
     // Wait for server to be ready
     deadline := time.Now().Add(30 * time.Second)
     for time.Now().Before(deadline) {
-        resp, err := http.Get(AdminAPIURL + "/api/health")
+        resp, err := http.Get(AdminAPIURL + "/api/healthz")
         if err == nil && resp.StatusCode == 200 {
             resp.Body.Close()
             return &MockServer{cmd: cmd}
@@ -878,7 +878,7 @@ impl MockServer {
         // Wait for server to be ready
         for _ in 0..30 {
             if let Ok(resp) = client
-                .get(format!("{}/api/health", ADMIN_API_URL))
+                .get(format!("{}/api/healthz", ADMIN_API_URL))
                 .send()
                 .await
             {

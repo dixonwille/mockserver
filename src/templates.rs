@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 Will Dixon
+// SPDX-FileCopyrightText: 2026 mockserver contributors
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 

@@ -105,10 +105,10 @@ Example log output:
 
 ### Health Check Endpoint
 
-The `/api/health` endpoint provides operational status:
+The `/api/healthz` endpoint provides operational status:
 
 ```bash
-curl http://localhost:3001/api/health
+curl http://localhost:3001/api/healthz
 ```
 
 Response:

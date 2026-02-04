@@ -27,7 +27,7 @@ curl http://localhost:3000/users
 
 # Admin API (port 3001) - all endpoints under /api/
 curl http://localhost:3001/api/requests
-curl http://localhost:3001/api/health
+curl http://localhost:3001/api/healthz
 
 # Future: Web UI at root of admin port
 curl http://localhost:3001/
@@ -64,7 +64,7 @@ mockserver serve --port 3000 --api-prefix /_mockserver
 ```
 # Request to mock port with prefix -> Admin API endpoint
 GET /_mockserver/api/requests      -> GET /api/requests (list requests)
-GET /_mockserver/api/health        -> GET /api/health   (health check)
+GET /_mockserver/api/healthz        -> GET /api/healthz   (health check)
 GET /_mockserver/                  -> (Future) Web UI
 
 # Request to mock port without prefix -> Lua handler
@@ -140,7 +140,7 @@ Request routed to Admin API Server
     |
     v
 Path starts with /api/?
-    |-- Yes --> API handlers (/api/requests, /api/health, etc.)
+    |-- Yes --> API handlers (/api/requests, /api/healthz, etc.)
     |-- No
         |
         v
@@ -161,7 +161,8 @@ All Admin API endpoints are prefixed with `/api/`. This reserves the root path f
 | DELETE | `/api/requests` | Clear all recorded requests |
 | POST | `/api/config/reload` | Trigger config reload |
 | POST | `/api/cleanup` | Run retention cleanup |
-| GET | `/api/health` | Health check |
+| GET | `/api/healthz` | Health check |
+| GET | `/api/about` | License and source information |
 
 **Reserved paths (for future use):**
 
@@ -302,11 +303,21 @@ Returns a summary of recorded requests (not the full request details):
 }
 ```
 
-**GET /api/health:**
+**GET /api/healthz:**
 ```json
 {
   "status": "ok",
   "version": "0.1.0"
+}
+```
+
+**GET /api/about:**
+```json
+{
+  "name": "mockserver",
+  "version": "0.1.0",
+  "license": "AGPL-3.0-only",
+  "source": "https://github.com/wdixon/mockserver"
 }
 ```
 

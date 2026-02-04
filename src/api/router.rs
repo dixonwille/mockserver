@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2026 Will Dixon
+// SPDX-FileCopyrightText: 2026 mockserver contributors
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
@@ -14,7 +14,8 @@ use axum::{
 /// Build the Admin API router
 ///
 /// Endpoints:
-/// - GET  /api/health           - Health check
+/// - GET  /api/healthz          - Health check
+/// - GET  /api/about            - License and source information
 /// - GET  /api/requests         - List requests (with filtering)
 /// - GET  /api/requests/{id}     - Get a specific request
 /// - GET  /api/requests/{id}/response - Get the response for a request
@@ -23,7 +24,8 @@ use axum::{
 /// - POST /api/cleanup          - Run retention cleanup
 pub fn build_api_router(state: AppState) -> Router {
     Router::new()
-        .route("/api/health", get(handlers::health_check))
+        .route("/api/healthz", get(handlers::health_check))
+        .route("/api/about", get(handlers::about))
         .route("/api/requests", get(handlers::list_requests))
         .route("/api/requests", delete(handlers::delete_requests))
         .route("/api/requests/{id}", get(handlers::get_request))
@@ -40,7 +42,8 @@ pub fn build_api_router(state: AppState) -> Router {
 /// with API routes under a path prefix
 pub fn build_combined_router(state: AppState, api_prefix: &str) -> Router {
     let api_routes = Router::new()
-        .route("/api/health", get(handlers::health_check))
+        .route("/api/healthz", get(handlers::health_check))
+        .route("/api/about", get(handlers::about))
         .route("/api/requests", get(handlers::list_requests))
         .route("/api/requests", delete(handlers::delete_requests))
         .route("/api/requests/{id}", get(handlers::get_request))

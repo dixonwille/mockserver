@@ -279,13 +279,13 @@ reuse-header src/your_new_file.rs
 This runs:
 
 ```bash
-reuse annotate --license AGPL-3.0-only --copyright "Will Dixon" <file>
+reuse annotate --license AGPL-3.0-only --copyright "mockserver contributors" <file>
 ```
 
 **Manual header for Rust:**
 
 ```rust
-// SPDX-FileCopyrightText: 2025 Will Dixon
+// SPDX-FileCopyrightText: 2026 mockserver contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 ```
 

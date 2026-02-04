@@ -496,7 +496,7 @@ Estimate: `loaded_domains * lua_memory_mb` = peak memory
 Monitor with the health endpoint:
 
 ```bash
-curl http://localhost:3001/api/health
+curl http://localhost:3001/api/healthz
 ```
 
 ---
