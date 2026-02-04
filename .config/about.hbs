@@ -4,7 +4,9 @@ This binary includes code from the following third-party Rust crates:
 
 {{#each licenses}}
 {{#each used_by}}
+{{#unless (eq crate.name "mockserver")}}
 - {{crate.name}} {{crate.version}} ({{../id}})
+{{/unless}}
 {{/each}}
 {{/each}}
 
@@ -12,11 +14,15 @@ This binary includes code from the following third-party Rust crates:
 FULL LICENSE TEXTS
 ================================================================================
 {{#each licenses}}
+{{#with (lookup used_by 0)}}
+{{#unless (and (eq (len ../used_by) 1) (eq crate.name "mockserver"))}}
 
 --------------------------------------------------------------------------------
-{{name}}{{#if id}} ({{id}}){{/if}}
-Used by: {{#each used_by}}{{crate.name}}{{#unless @last}}, {{/unless}}{{/each}}
+{{../name}}{{#if ../id}} ({{../id}}){{/if}}
+Used by: {{#each ../used_by}}{{#unless (eq crate.name "mockserver")}}{{crate.name}}{{#unless @last}}, {{/unless}}{{/unless}}{{/each}}
 --------------------------------------------------------------------------------
 
-{{{text}}}
+{{{../text}}}
+{{/unless}}
+{{/with}}
 {{/each}}

@@ -14,7 +14,7 @@
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
 
-      perSystem = { config, self', inputs', pkgs, system, ... }:
+      perSystem = { config, self', inputs', pkgs, system, lib, ... }:
         let
           # Apply rust-overlay to get latest stable Rust
           rustPkgs = import inputs.nixpkgs {
@@ -26,8 +26,52 @@
           rustToolchain = rustPkgs.rust-bin.stable.latest.default.override {
             extensions = [ "rust-src" "rust-analyzer" "clippy" "llvm-tools-preview" ];
           };
+
+          # Read version from Cargo.toml and compute dev version
+          cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
+          baseVersion = cargoToml.package.version;
+
+          # Parse version and increment patch for dev builds
+          versionParts = lib.splitVersion baseVersion;
+          major = builtins.elemAt versionParts 0;
+          minor = builtins.elemAt versionParts 1;
+          patch = lib.toInt (builtins.elemAt versionParts 2);
+          nextPatch = builtins.toString (patch + 1);
+
+          # Nix builds are always dev versions
+          version = "${major}.${minor}.${nextPatch}-dev+${inputs.self.shortRev or "dirty"}";
         in
         {
+          # Default package
+          packages.default = pkgs.rustPlatform.buildRustPackage {
+            pname = "mockserver";
+            inherit version;
+
+            src = ./.;
+
+            cargoLock = {
+              lockFile = ./Cargo.lock;
+            };
+
+            nativeBuildInputs = [
+              pkgs.pkg-config
+            ];
+
+            buildInputs = lib.optionals pkgs.stdenv.isDarwin [
+              pkgs.apple-sdk_15
+            ];
+
+            # Pass the Nix-computed version to build.rs
+            MOCKSERVER_VERSION = version;
+
+            meta = {
+              description = "A Lua-powered mock server for API development";
+              homepage = "https://github.com/dixonwille/mockserver";
+              license = lib.licenses.agpl3Only;
+              mainProgram = "mockserver";
+            };
+          };
+
           # Development shell
           devShells.default = pkgs.mkShell {
             name = "mockserver-dev";

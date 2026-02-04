@@ -20,7 +20,7 @@ pub use serve::ServeArgs;
 #[derive(Parser)]
 #[command(name = "mockserver")]
 #[command(about = "A Lua-powered mock server for API development")]
-#[command(version)]
+#[command(version = env!("MOCKSERVER_VERSION"))]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
