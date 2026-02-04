@@ -41,8 +41,8 @@ mockserver serve [OPTIONS]
 
 Options:
   -p, --port <PORT>           Port for mock server [default: 3000]
-  -d, --dir <DIR>             Directory containing Lua mock files [default: ./mocks]
-      --data-dir <DIR>        Directory for SQLite database [default: ./data]
+  -d, --dir <DIR>             Directory containing Lua mock files [default: ./.mockserver/mocks]
+      --data-dir <DIR>        Directory for SQLite database [default: ./.mockserver/data]
 
   API Routing (mutually exclusive):
       --api-port <PORT>       Serve Admin API on separate port [default: 3001]
@@ -97,17 +97,17 @@ Initialize a new mocks directory with the folder structure and example files.
 mockserver init [OPTIONS] [PATH]
 
 Arguments:
-  [PATH]    Directory to initialize [default: ./mocks]
+  [PATH]    Directory to initialize [default: ./.mockserver/mocks]
 
 Options:
-  -f, --force    Update .mockserver/ type definitions and .luarc.json (preserves _default/)
+  -f, --force    Update _types/ type definitions and .luarc.json (preserves _default/)
 ```
 
 **What it creates:**
 
 ```
-./mocks/
-    .mockserver/              # IDE support files (LuaLS type definitions)
+.mockserver/mocks/
+    _types/                   # IDE support files (LuaLS type definitions)
         types.lua             # Request, Response type definitions
         json.lua              # json module definition
         log.lua               # log module definition
@@ -121,7 +121,7 @@ Options:
         init.lua              # Fallback handler with helpful example
 ```
 
-The `.mockserver/` folder contains EmmyLua type definitions that enable IDE support (autocomplete, type checking, documentation). See [IDE Support](./IDE_SUPPORT.md) for details.
+The `_types/` folder contains EmmyLua type definitions that enable IDE support (autocomplete, type checking, documentation). See [IDE Support](./IDE_SUPPORT.md) for details.
 
 **Example _default/init.lua:**
 
@@ -181,7 +181,7 @@ Arguments:
   <DOMAIN>    Domain name (e.g., api.example.com)
 
 Options:
-  -d, --dir <DIR>      Mocks directory [default: ./mocks]
+  -d, --dir <DIR>      Mocks directory [default: ./.mockserver/mocks]
   -t, --template <T>   Template type: basic, rest, graphql [default: basic]
   -f, --force          Overwrite existing folder
 ```
@@ -189,7 +189,7 @@ Options:
 **What it creates (all templates):**
 
 ```
-./mocks/api.example.com/
+.mockserver/mocks/api.example.com/
     init.lua          # Entry point with handle() function
 ```
 
@@ -203,11 +203,11 @@ The `new` command creates a single `init.lua` file with template-specific conten
 ```bash
 # Create a basic mock for api.github.com
 mockserver new api.github.com
-# Creates: ./mocks/api.github.com/init.lua
+# Creates: .mockserver/mocks/api.github.com/init.lua
 
 # Create a REST-style mock with route structure
 mockserver new api.stripe.com --template rest
-# Creates: ./mocks/api.stripe.com/{init.lua, routes/, templates/}
+# Creates: .mockserver/mocks/api.stripe.com/{init.lua, routes/, templates/}
 
 # Specify custom directory
 mockserver new payments.local --dir ./test/mocks
@@ -249,7 +249,7 @@ Arguments:
   [DOMAIN]    Check only a specific domain (optional)
 
 Options:
-  -d, --dir <DIR>    Mocks directory [default: ./mocks]
+  -d, --dir <DIR>    Mocks directory [default: ./.mockserver/mocks]
       --json         Output as JSON
   -b, --brief        Brief output (no detailed error messages)
 ```
@@ -260,7 +260,7 @@ Options:
 
 ```
 $ mockserver check
-Mocks directory: ./mocks
+Mocks directory: .mockserver/mocks
 
   Domain                  Status
   ----------------------  -------
@@ -281,7 +281,7 @@ Status: OK
 ```
 $ mockserver check --json
 {
-  "mocks_dir": "./mocks",
+  "mocks_dir": ".mockserver/mocks",
   "domains": [
     {
       "name": "_default",
@@ -308,8 +308,8 @@ The following defaults are chosen to minimize configuration for local developmen
 |---------|---------|-----------|
 | Port | 3000 | Common development port, unlikely to conflict |
 | API Port | 3001 | Adjacent to mock port |
-| Mocks Directory | ./mocks | Project-local, obvious location |
-| Data Directory | ./data | Project-local, gitignore-friendly |
+| Mocks Directory | ./.mockserver/mocks | Consolidated under hidden `.mockserver/` folder |
+| Data Directory | ./.mockserver/data | Consolidated under hidden `.mockserver/` folder |
 | Host | 127.0.0.1 | Secure default, localhost only |
 | Retention | 7 days | Reasonable for development |
 | Max Body | 10MB | Covers most API payloads |
@@ -348,8 +348,8 @@ All CLI options can also be set via environment variables with a `MOCKSERVER_` p
 | `MOCKSERVER_API_PORT` | 3001 | Admin API port |
 | `MOCKSERVER_API_PREFIX` | (none) | API path prefix (disables separate port) |
 | `MOCKSERVER_API_DOMAIN` | (none) | API domain (disables separate port) |
-| `MOCKSERVER_DIR` | `./mocks` | Lua scripts directory |
-| `MOCKSERVER_DATA_DIR` | `./data` | SQLite database directory |
+| `MOCKSERVER_DIR` | `./.mockserver/mocks` | Lua scripts directory |
+| `MOCKSERVER_DATA_DIR` | `./.mockserver/data` | SQLite database directory |
 | `MOCKSERVER_HOST` | `127.0.0.1` | Bind address |
 | `MOCKSERVER_RETENTION` | 7 | Days to keep request history |
 | `MOCKSERVER_MAX_BODY` | 10485760 | Maximum request body size (bytes) |

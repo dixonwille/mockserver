@@ -84,7 +84,7 @@ Each domain gets its own pool of isolated Lua runtimes:
 - **Separate package.path**: Each domain can only `require()` its own modules
 
 ```
-mocks/
+.mockserver/mocks/
   api.example.com/     <- Isolated runtime pool
     init.lua
     helpers.lua
@@ -287,7 +287,7 @@ Avoid `debug` or `trace` levels in production (may log sensitive data).
 
 ### Database Location
 
-Default location is `./data/mockserver.db`. For production:
+Default location is `./.mockserver/data/mockserver.db`. For production:
 
 ```bash
 mockserver serve --data-dir /var/lib/mockserver

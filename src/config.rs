@@ -50,8 +50,8 @@ impl Default for ServerConfig {
         Self {
             port: 3000,
             host: "127.0.0.1".to_string(),
-            mocks_dir: PathBuf::from("./mocks"),
-            data_dir: PathBuf::from("./data"),
+            mocks_dir: PathBuf::from("./.mockserver/mocks"),
+            data_dir: PathBuf::from("./.mockserver/data"),
             api_routing: ApiRoutingMode::SeparatePort { port: 3001 },
             retention_days: 7,
             max_body_size: 10 * 1024 * 1024, // 10MB

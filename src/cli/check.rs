@@ -15,7 +15,7 @@ use crate::lua::{DomainEntry, list_domains, register_stub_modules};
 #[derive(Args)]
 pub struct CheckArgs {
     /// Mocks directory
-    #[arg(short, long, default_value = "./mocks", env = "MOCKSERVER_DIR")]
+    #[arg(short, long, default_value = "./.mockserver/mocks", env = "MOCKSERVER_DIR")]
     dir: PathBuf,
 
     /// Check only a specific domain

@@ -17,7 +17,7 @@ pub struct NewArgs {
     domain: String,
 
     /// Mocks directory
-    #[arg(short, long, default_value = "./mocks", env = "MOCKSERVER_DIR")]
+    #[arg(short, long, default_value = "./.mockserver/mocks", env = "MOCKSERVER_DIR")]
     dir: PathBuf,
 
     /// Template type: basic, rest, graphql

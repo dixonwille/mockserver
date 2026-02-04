@@ -22,8 +22,8 @@ mockserver serve --port 3000 --dir ./test/mocks --data-dir ./test/data
 |--------|-------------|---------|
 | `--port` | Mock server port | 3000 |
 | `--api-port` | Admin API port | 3001 |
-| `--dir` | Lua mocks directory | ./mocks |
-| `--data-dir` | SQLite database directory | ./data |
+| `--dir` | Lua mocks directory | ./.mockserver/mocks |
+| `--data-dir` | SQLite database directory | ./.mockserver/data |
 | `--host` | Bind address | 127.0.0.1 |
 
 **Using separate ports for test isolation:**
@@ -370,7 +370,7 @@ curl "http://localhost:3001/api/requests?domain=test-a.api.example.com"
 Create domain-specific mock folders or use `_default` to handle all:
 
 ```
-./mocks/
+.mockserver/mocks/
     _default/init.lua          # Handles all domains
     test-a.api.example.com/    # Optional: test-specific behavior
     test-b.api.example.com/

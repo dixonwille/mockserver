@@ -10,8 +10,8 @@ Mockserver provides first-class IDE support through [LuaLS (Lua Language Server)
 ## Generated Files
 
 ```
-./mocks/
-    .mockserver/                  # Type definitions (generated, commit to VCS)
+.mockserver/mocks/
+    _types/                       # Type definitions (generated, commit to VCS)
         types.lua                 # Request, Response, handle() types
         json.lua                  # json.encode(), json.decode()
         log.lua                   # log.debug(), log.info(), etc.
@@ -28,7 +28,7 @@ Mockserver provides first-class IDE support through [LuaLS (Lua Language Server)
 ### types.lua - Core Types
 
 ```lua
--- .mockserver/types.lua
+-- _types/types.lua
 -- EmmyLua type definitions for mockserver
 
 ---@meta
@@ -57,7 +57,7 @@ function handle(request) end
 ### json.lua - JSON Module
 
 ```lua
--- .mockserver/json.lua
+-- _types/json.lua
 -- JSON encoding/decoding module
 
 ---@meta
@@ -84,7 +84,7 @@ return json
 ### log.lua - Logging Module
 
 ```lua
--- .mockserver/log.lua
+-- _types/log.lua
 -- Logging module for debug output
 
 ---@meta
@@ -115,7 +115,7 @@ return log
 ### delay.lua - Delay Module
 
 ```lua
--- .mockserver/delay.lua
+-- _types/delay.lua
 -- Non-blocking delay functions
 
 ---@meta
@@ -136,7 +136,7 @@ return delay
 ### state.lua - State Module
 
 ```lua
--- .mockserver/state.lua
+-- _types/state.lua
 -- Persistent key-value storage (per-domain)
 
 ---@meta
@@ -178,7 +178,7 @@ return state
 ### uuid.lua - UUID Module
 
 ```lua
--- .mockserver/uuid.lua
+-- _types/uuid.lua
 -- UUID generation
 
 ---@meta
@@ -198,7 +198,7 @@ return uuid
 ### time.lua - Time Module
 
 ```lua
--- .mockserver/time.lua
+-- _types/time.lua
 -- Time and date utilities
 
 ---@meta
@@ -235,7 +235,7 @@ return time
 ### fs.lua - File System Module
 
 ```lua
--- .mockserver/fs.lua
+-- _types/fs.lua
 -- Sandboxed file system access (read-only, domain-scoped)
 
 ---@meta
@@ -268,7 +268,7 @@ The `.luarc.json` file configures Lua Language Server for the mocks workspace:
 {
   "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
   "workspace": {
-    "library": [".mockserver"],
+    "library": ["_types"],
     "checkThirdParty": false
   },
   "runtime": {
@@ -292,7 +292,7 @@ The `.luarc.json` file configures Lua Language Server for the mocks workspace:
 
 | Setting | Purpose |
 |---------|---------|
-| `workspace.library` | Points to `.mockserver/` for type definitions |
+| `workspace.library` | Points to `_types/` for type definitions |
 | `runtime.version` | Enables Lua 5.5 syntax |
 | `diagnostics.globals` | Prevents "undefined global" warning for `handle` |
 | `hint.enable` | Shows inline type hints |
@@ -303,7 +303,7 @@ The `.luarc.json` file configures Lua Language Server for the mocks workspace:
 ### Visual Studio Code
 
 1. Install the [Lua extension by sumneko](https://marketplace.visualstudio.com/items?itemName=sumneko.lua)
-2. Open the folder containing `mocks/`
+2. Open the folder containing `.mockserver/mocks/`
 3. The `.luarc.json` is automatically detected
 
 **Result:** Full autocomplete, hover documentation, and type checking.
@@ -337,8 +337,8 @@ Or with [lazy.nvim](https://github.com/folke/lazy.nvim) and [mason.nvim](https:/
 ### JetBrains IDEs (IntelliJ, WebStorm, etc.)
 
 1. Install the [EmmyLua plugin](https://plugins.jetbrains.com/plugin/9768-emmylua)
-2. Open the folder containing `mocks/`
-3. The plugin reads EmmyLua annotations from `.mockserver/`
+2. Open the folder containing `.mockserver/mocks/`
+3. The plugin reads EmmyLua annotations from `_types/`
 
 ## Autocomplete in Action
 
@@ -377,7 +377,7 @@ end
 
 ## Version Control
 
-**The `.mockserver/` folder and `.luarc.json` should be committed to version control.** This ensures:
+**The `_types/` folder and `.luarc.json` should be committed to version control.** This ensures:
 
 1. All team members get IDE support immediately
 2. CI/CD can run Lua type checking (via `lua-language-server --check=./mocks --checklevel=Warning`)
@@ -385,11 +385,11 @@ end
 
 **Recommended `.gitignore`:**
 ```gitignore
-# Mockserver data (not the type definitions)
-data/
+# Mockserver data (not the mocks or type definitions)
+.mockserver/data/
 *.db
 
-# Don't ignore .mockserver/ - it contains type definitions
+# Don't ignore .mockserver/mocks/ - it contains your mocks and type definitions
 # Don't ignore .luarc.json - it configures the IDE
 ```
 
@@ -401,13 +401,13 @@ When mockserver is updated and APIs change, run:
 mockserver init --force
 ```
 
-This regenerates the `.mockserver/` type definitions while preserving your mock scripts.
+This regenerates the `_types/` type definitions while preserving your mock scripts.
 
 Alternatively, mockserver could check version compatibility on startup:
 
 ```
 $ mockserver serve
-Warning: .mockserver/ type definitions are outdated (v1.0.0 vs v1.2.0)
+Warning: _types/ type definitions are outdated (v1.0.0 vs v1.2.0)
 Run 'mockserver init --force' to update IDE support
 ```
 
@@ -418,7 +418,7 @@ You can run LuaLS in CI to catch type errors before deployment:
 ```bash
 # Install lua-language-server
 # Then run type checking on the mocks directory
-lua-language-server --check=./mocks --checklevel=Warning
+lua-language-server --check=./.mockserver/mocks --checklevel=Warning
 ```
 
 This will fail if there are any type errors in your mock scripts.

@@ -26,11 +26,11 @@ pub struct ServeArgs {
     port: u16,
 
     /// Directory containing Lua mock files
-    #[arg(short, long, default_value = "./mocks", env = "MOCKSERVER_DIR")]
+    #[arg(short, long, default_value = "./.mockserver/mocks", env = "MOCKSERVER_DIR")]
     dir: PathBuf,
 
     /// Directory for SQLite database
-    #[arg(long, default_value = "./data", env = "MOCKSERVER_DATA_DIR")]
+    #[arg(long, default_value = "./.mockserver/data", env = "MOCKSERVER_DATA_DIR")]
     data_dir: PathBuf,
 
     /// Serve Admin API on separate port

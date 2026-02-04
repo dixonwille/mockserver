@@ -14,10 +14,10 @@ use crate::templates;
 #[derive(Args)]
 pub struct InitArgs {
     /// Directory to initialize
-    #[arg(default_value = "./mocks")]
+    #[arg(default_value = "./.mockserver/mocks")]
     path: PathBuf,
 
-    /// Update .mockserver/ type definitions and .luarc.json (preserves _default/)
+    /// Update _types/ type definitions and .luarc.json (preserves _default/)
     #[arg(short, long)]
     force: bool,
 }
@@ -26,9 +26,9 @@ impl InitArgs {
     pub fn run(self) -> anyhow::Result<()> {
         let path = &self.path;
 
-        let mockserver_dir = path.join(".mockserver");
+        let types_dir = path.join("_types");
         let default_dir = path.join("_default");
-        let already_initialized = mockserver_dir.exists();
+        let already_initialized = types_dir.exists();
 
         if already_initialized && !self.force {
             anyhow::bail!(
@@ -41,14 +41,14 @@ impl InitArgs {
         fs::create_dir_all(path)?;
         fs::create_dir_all(&default_dir)?;
 
-        // Remove and recreate .mockserver/ to ensure clean type definitions
-        if mockserver_dir.exists() {
-            fs::remove_dir_all(&mockserver_dir)?;
+        // Remove and recreate _types/ to ensure clean type definitions
+        if types_dir.exists() {
+            fs::remove_dir_all(&types_dir)?;
         }
-        fs::create_dir_all(&mockserver_dir)?;
+        fs::create_dir_all(&types_dir)?;
 
         // Generate type definition files
-        write_type_definitions(&mockserver_dir)?;
+        write_type_definitions(&types_dir)?;
 
         // Generate .luarc.json
         write_luarc_json(path)?;
@@ -64,7 +64,7 @@ impl InitArgs {
 
         if already_initialized {
             println!("Updated mocks directory at {}", path.display());
-            println!("  Refreshed .mockserver/ (type definitions)");
+            println!("  Refreshed _types/ (type definitions)");
             println!("  Refreshed .luarc.json (IDE configuration)");
             if created_default {
                 println!("  Created _default/init.lua (fallback handler)");
@@ -73,7 +73,7 @@ impl InitArgs {
             }
         } else {
             println!("Initialized mocks directory at {}", path.display());
-            println!("  Created .mockserver/ (type definitions)");
+            println!("  Created _types/ (type definitions)");
             println!("  Created .luarc.json (IDE configuration)");
             println!("  Created _default/init.lua (fallback handler)");
             println!();

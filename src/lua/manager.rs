@@ -289,8 +289,8 @@ pub fn list_domains(mocks_dir: &Path) -> io::Result<Vec<DomainEntry>> {
             None => continue,
         };
 
-        // Skip hidden directories (e.g., .mockserver, .git)
-        if name.starts_with('.') {
+        // Skip hidden directories (e.g., .git) and _types (type definitions)
+        if name.starts_with('.') || name == "_types" {
             continue;
         }
 

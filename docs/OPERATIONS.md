@@ -9,8 +9,8 @@ This document covers operational concerns for running mockserver in production e
 | Flag | Environment Variable | Default | Description |
 |------|---------------------|---------|-------------|
 | `-p, --port` | `MOCKSERVER_PORT` | `3000` | Port for mock server |
-| `-d, --dir` | `MOCKSERVER_DIR` | `./mocks` | Directory containing Lua mock files |
-| `--data-dir` | `MOCKSERVER_DATA_DIR` | `./data` | Directory for SQLite database |
+| `-d, --dir` | `MOCKSERVER_DIR` | `./.mockserver/mocks` | Directory containing Lua mock files |
+| `--data-dir` | `MOCKSERVER_DATA_DIR` | `./.mockserver/data` | Directory for SQLite database |
 | `--host` | `MOCKSERVER_HOST` | `127.0.0.1` | Bind address |
 | `--api-port` | `MOCKSERVER_API_PORT` | `3001` | Port for Admin API (default mode) |
 | `--api-prefix` | `MOCKSERVER_API_PREFIX` | - | Serve Admin API at path prefix (disables --api-port) |
@@ -30,8 +30,8 @@ All configuration can be set via environment variables, which is useful for cont
 ```bash
 export MOCKSERVER_PORT=8080
 export MOCKSERVER_HOST=0.0.0.0
-export MOCKSERVER_DIR=/app/mocks
-export MOCKSERVER_DATA_DIR=/data
+export MOCKSERVER_DIR=/app/.mockserver/mocks
+export MOCKSERVER_DATA_DIR=/app/.mockserver/data
 export MOCKSERVER_RETENTION=14
 export MOCKSERVER_LUA_MEMORY=128
 export MOCKSERVER_DB_CACHE=128
@@ -133,7 +133,7 @@ The database file is stored at `{data_dir}/mockserver.db`:
 
 ```bash
 # Default location
-./data/mockserver.db
+./.mockserver/data/mockserver.db
 
 # Custom location via CLI
 mockserver serve --data-dir /var/lib/mockserver
@@ -224,17 +224,17 @@ The SQLite database uses WAL (Write-Ahead Logging) mode. To safely backup:
 **Option 1: Use SQLite backup API**
 
 ```bash
-sqlite3 ./data/mockserver.db ".backup './backup/mockserver.db'"
+sqlite3 ./.mockserver/data/mockserver.db ".backup './backup/mockserver.db'"
 ```
 
 **Option 2: Checkpoint and copy**
 
 ```bash
 # Force WAL checkpoint
-sqlite3 ./data/mockserver.db "PRAGMA wal_checkpoint(TRUNCATE);"
+sqlite3 ./.mockserver/data/mockserver.db "PRAGMA wal_checkpoint(TRUNCATE);"
 
 # Copy the main database file
-cp ./data/mockserver.db ./backup/
+cp ./.mockserver/data/mockserver.db ./backup/
 ```
 
 **Option 3: Use the Admin API to clear, then backup**
@@ -243,7 +243,7 @@ For non-critical data, simply clear and backup periodically:
 
 ```bash
 curl -X POST http://localhost:3001/api/cleanup
-sqlite3 ./data/mockserver.db ".backup './backup/mockserver.db'"
+sqlite3 ./.mockserver/data/mockserver.db ".backup './backup/mockserver.db'"
 ```
 
 ### WAL Mode Notes

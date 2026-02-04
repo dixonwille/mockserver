@@ -33,7 +33,7 @@ curl -H "X-Forwarded-Host: api.example.com" http://localhost:3000/users
 Check that a folder exists in your mocks directory matching the domain name:
 
 ```
-mocks/
+.mockserver/mocks/
   _default/
     init.lua
   api.example.com/      <-- Must match Host header exactly
@@ -62,7 +62,7 @@ Invalid patterns that will be rejected:
 If no domain-specific folder exists, mockserver falls back to `_default/init.lua`. Ensure this exists:
 
 ```bash
-mockserver init ./mocks
+mockserver init
 ```
 
 ---
@@ -579,4 +579,4 @@ Cleanup runs automatically on server startup and periodically during operation. 
 
 1. Lower retention period
 2. Schedule periodic `POST /api/cleanup` calls
-3. Monitor database size in `./data/mockserver.db`
+3. Monitor database size in `./.mockserver/data/mockserver.db`

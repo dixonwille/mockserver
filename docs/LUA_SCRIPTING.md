@@ -7,30 +7,31 @@ This document covers everything about writing Lua mock handlers for the mock ser
 Each domain gets its own folder with an `init.lua` entry point. This enables modular organization with helper files, templates, and route-specific handlers.
 
 ```
-./mocks/                              # Root mocks directory
-    .mockserver/                      # IDE type definitions (EXCLUDED from routing/watching)
-        types.lua
-        json.lua
-        ...
-    .luarc.json                       # LuaLS config (EXCLUDED from watching)
-    _default/                         # Fallback for unmatched domains
-        init.lua                      # Entry point (required)
-    api.example.com/                  # Routable domain folder
-        init.lua                      # Entry point with handle() function
-        helpers.lua                   # Shared helper functions
-        templates/                    # Reusable response templates
-            error.lua
-            pagination.lua
-    integrator.example.com/           # Another routable domain
-        init.lua                      # Entry point
-        routes/                       # Route-specific handlers
-            users.lua
-            orders.lua
-            webhooks.lua
-        fixtures/                     # Test data
-            users.json
-./data/                               # Data directory
-    mockserver.db                     # SQLite database
+.mockserver/
+    mocks/                            # Root mocks directory
+        _types/                       # IDE type definitions (EXCLUDED from routing/watching)
+            types.lua
+            json.lua
+            ...
+        .luarc.json                   # LuaLS config (EXCLUDED from watching)
+        _default/                     # Fallback for unmatched domains
+            init.lua                  # Entry point (required)
+        api.example.com/              # Routable domain folder
+            init.lua                  # Entry point with handle() function
+            helpers.lua               # Shared helper functions
+            templates/                # Reusable response templates
+                error.lua
+                pagination.lua
+        integrator.example.com/       # Another routable domain
+            init.lua                  # Entry point
+            routes/                   # Route-specific handlers
+                users.lua
+                orders.lua
+                webhooks.lua
+            fixtures/                 # Test data
+                users.json
+    data/                             # Data directory
+        mockserver.db                 # SQLite database
 ```
 
 **Key conventions:**
@@ -40,7 +41,7 @@ Each domain gets its own folder with an `init.lua` entry point. This enables mod
 - `init.lua` must define the `handle(request)` function
 - Additional `.lua` files can be `require()`d from `init.lua`
 - Non-Lua files (JSON fixtures, etc.) can be read via provided APIs
-- **Folders starting with `.` (dot) are NEVER routable domains** (e.g., `.mockserver/`, `.git/`)
+- **`_types/` and folders starting with `.` (dot) are NEVER routable domains** (e.g., `_types/`, `.git/`)
 
 ## Domain Resolution Logic
 
@@ -50,14 +51,15 @@ Each domain gets its own folder with an `init.lua` entry point. This enables mod
 3. Check Host header (direct connection)
 4. Extract hostname (strip port if present)
 5. Validate hostname:
-   - Must NOT start with "." (excludes .mockserver, .git, etc.)
+   - Must NOT start with "." (excludes .git, etc.)
+   - Must NOT be "_types" (reserved for type definitions)
    - Must NOT contain path traversal sequences
 6. Look for {hostname}/ folder with init.lua in mocks directory
 7. Fall back to _default/init.lua if not found
 ```
 
-**Security note:** Hostnames starting with `.` are always rejected. This prevents:
-- `.mockserver` being treated as a routable domain
+**Security note:** Hostnames starting with `.` and the reserved name `_types` are always rejected. This prevents:
+- `_types` being treated as a routable domain (reserved for type definitions)
 - `.git`, `.svn`, or other VCS folders being accessible
 - Editor/IDE config folders (`.vscode`, `.idea`) being exposed
 

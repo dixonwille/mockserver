@@ -54,8 +54,8 @@ Or add to your flake inputs:
 mockserver init
 ```
 
-This creates a `mocks/` directory with:
-- `.mockserver/` - Type definitions for IDE support
+This creates the `.mockserver/mocks/` directory with:
+- `_types/` - Type definitions for IDE support
 - `.luarc.json` - Lua language server configuration
 - `_default/init.lua` - Fallback handler for unmatched domains
 
@@ -65,7 +65,7 @@ This creates a `mocks/` directory with:
 mockserver new api.example.com
 ```
 
-This creates `mocks/api.example.com/init.lua` with a basic handler:
+This creates `.mockserver/mocks/api.example.com/init.lua` with a basic handler:
 
 ```lua
 local json = require("json")
@@ -122,7 +122,7 @@ curl http://localhost:3001/api/requests
 |---------|-------------|
 | `mockserver init [path]` | Initialize a new mocks directory |
 | `mockserver new <domain>` | Create a new domain mock folder |
-| `mockserver serve` | Start the mock server |
+| `mockserver serve` | Start the mock server (uses `.mockserver/mocks` and `.mockserver/data`) |
 | `mockserver check` | Validate Lua scripts for syntax errors |
 
 ### Serve Options
@@ -132,7 +132,7 @@ mockserver serve [OPTIONS]
 
 Options:
   -p, --port <PORT>              Mock server port [default: 3000]
-  -d, --dir <DIR>                Mocks directory [default: ./mocks]
+  -d, --dir <DIR>                Mocks directory [default: ./.mockserver/mocks]
       --api-port <PORT>          Admin API port [default: 3001]
       --api-prefix <PREFIX>      Serve Admin API at path prefix (disables --api-port)
       --api-domain <DOMAIN>      Serve Admin API at domain (disables --api-port)

@@ -18,7 +18,7 @@ RUN cargo build --release --target x86_64-unknown-linux-musl
 FROM scratch
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/mockserver /mockserver
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-VOLUME ["/mocks", "/data"]
+VOLUME ["/.mockserver"]
 EXPOSE 3000 3001
 ENTRYPOINT ["/mockserver", "serve"]
 ```
@@ -33,15 +33,12 @@ services:
       - "3000:3000"
       - "3001:3001"
     volumes:
-      - ./mocks:/mocks
-      - mockserver-data:/data
+      - ./.mockserver:/mockserver
     environment:
-      - MOCKSERVER_DIR=/mocks
-      - MOCKSERVER_DATA_DIR=/data
+      - MOCKSERVER_DIR=/mockserver/mocks
+      - MOCKSERVER_DATA_DIR=/mockserver/data
       - MOCKSERVER_HOST=0.0.0.0
 
-volumes:
-  mockserver-data:
 ```
 
 ### Running
@@ -77,8 +74,8 @@ mockserver serve
 |----------|---------|-------------|
 | `MOCKSERVER_PORT` | 3000 | Mock server port |
 | `MOCKSERVER_API_PORT` | 3001 | Admin API port |
-| `MOCKSERVER_DIR` | `./mocks` | Lua scripts directory |
-| `MOCKSERVER_DATA_DIR` | `./data` | SQLite database directory |
+| `MOCKSERVER_DIR` | `./.mockserver/mocks` | Lua scripts directory |
+| `MOCKSERVER_DATA_DIR` | `./.mockserver/data` | SQLite database directory |
 | `MOCKSERVER_HOST` | `127.0.0.1` | Bind address |
 | `MOCKSERVER_RETENTION` | 7 | Days to keep request history |
 | `MOCKSERVER_SCRIPT_TIMEOUT` | 30 | Lua script timeout (seconds) |
