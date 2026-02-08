@@ -39,7 +39,7 @@ mockserver serve [OPTIONS]
 | `--host` | `MOCKSERVER_HOST` | `127.0.0.1` | Bind address |
 | `--api-port` | `MOCKSERVER_API_PORT` | `3001` | Admin API port (default routing mode) |
 | `--api-prefix` | `MOCKSERVER_API_PREFIX` | -- | Serve Admin API at path prefix (disables `--api-port`) |
-| `--api-domain` | `MOCKSERVER_API_DOMAIN` | -- | Serve Admin API at domain (disables `--api-port`). **Note:** not fully implemented |
+| `--api-domain` | `MOCKSERVER_API_DOMAIN` | -- | Serve Admin API at domain (disables `--api-port`). Conflicts with `--api-prefix` |
 | `--retention` | `MOCKSERVER_RETENTION` | `7` | Days to retain request history |
 | `--max-body` | `MOCKSERVER_MAX_BODY` | `10485760` | Max request body size in bytes (10 MB) |
 | `--script-timeout` | `MOCKSERVER_SCRIPT_TIMEOUT` | `30` | Lua script execution timeout in seconds |

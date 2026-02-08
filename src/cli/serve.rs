@@ -9,14 +9,15 @@ use std::sync::Arc;
 
 use clap::Args;
 use tokio::net::TcpListener;
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::ServerConfig;
+use crate::api::build_api_prefixed_router;
 use crate::api::build_api_router;
 use crate::config::ApiRoutingMode;
 use crate::db::init_database;
 use crate::lua::ScriptManager;
-use crate::server::{AppState, build_mock_router};
+use crate::server::{AppState, build_domain_dispatch_router, build_mock_router};
 use crate::watcher::{start_idle_flusher, start_watcher};
 
 #[derive(Args)]
@@ -47,11 +48,11 @@ pub struct ServeArgs {
     api_port: u16,
 
     /// Serve Admin API at path prefix (disables --api-port)
-    #[arg(long, env = "MOCKSERVER_API_PREFIX")]
+    #[arg(long, env = "MOCKSERVER_API_PREFIX", conflicts_with = "api_domain")]
     api_prefix: Option<String>,
 
     /// Serve Admin API at specific domain (disables --api-port)
-    #[arg(long, env = "MOCKSERVER_API_DOMAIN")]
+    #[arg(long, env = "MOCKSERVER_API_DOMAIN", conflicts_with = "api_prefix")]
     api_domain: Option<String>,
 
     /// Bind address
@@ -90,6 +91,7 @@ pub struct ServeArgs {
 impl From<ServeArgs> for ServerConfig {
     fn from(args: ServeArgs) -> Self {
         let api_routing = if let Some(domain) = args.api_domain {
+            let domain = domain.split(':').next().unwrap_or(&domain).to_lowercase();
             ApiRoutingMode::Domain { domain }
         } else if let Some(prefix) = args.api_prefix {
             ApiRoutingMode::PathPrefix { prefix }
@@ -157,6 +159,15 @@ impl ServeArgs {
         let loaded = scripts.loaded_domains();
         info!("Loaded {} domain(s): {:?}", loaded.len(), loaded);
 
+        if let ApiRoutingMode::Domain { domain } = &config.api_routing
+            && loaded.iter().any(|d| d.eq_ignore_ascii_case(domain))
+        {
+            warn!(
+                "API domain '{}' matches a loaded mock domain — mock scripts for this domain will be unreachable",
+                domain
+            );
+        }
+
         // 4. Start file watcher (if enabled)
         let _watcher_handle = if config.watch_enabled {
             info!("Hot reload enabled");
@@ -210,7 +221,7 @@ impl ServeArgs {
             }
             ApiRoutingMode::PathPrefix { prefix } => {
                 // Combined router with API under prefix
-                let api_router = crate::api::build_combined_router(state.clone(), prefix);
+                let api_router = build_api_prefixed_router(state.clone(), prefix);
                 let mock_router = build_mock_router(state);
                 let combined = api_router.merge(mock_router);
 
@@ -222,19 +233,15 @@ impl ServeArgs {
                 axum::serve(listener, combined).await?;
             }
             ApiRoutingMode::Domain { domain } => {
-                // For domain-based routing, we'd need to check the Host header
-                // For now, just run mock server (API would need custom middleware)
-                info!(
-                    "Admin API domain: {} (domain routing not fully implemented)",
-                    domain
-                );
-
+                let api_router = build_api_router(state.clone());
                 let mock_router = build_mock_router(state);
+                let app = build_domain_dispatch_router(api_router, mock_router, domain);
+
                 let addr = format!("{}:{}", config.host, config.port);
                 let listener = TcpListener::bind(&addr).await?;
-                info!("Mock server listening on http://{}", addr);
-
-                axum::serve(listener, mock_router).await?;
+                info!("Server listening on http://{}", addr);
+                info!("Admin API available at domain: {}", domain);
+                axum::serve(listener, app).await?;
             }
         }
 

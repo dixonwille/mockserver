@@ -6,9 +6,10 @@
 
 use crate::config::ServerConfig;
 use crate::lua::ScriptManager;
-use axum::{Router, extract::DefaultBodyLimit};
+use axum::{Router, extract::DefaultBodyLimit, extract::Request};
 use std::sync::Arc;
 use tokio_rusqlite::Connection;
+use tower::ServiceExt;
 
 /// Shared application state
 #[derive(Clone)]
@@ -52,4 +53,32 @@ pub fn build_mock_router(state: AppState) -> Router {
         .fallback(super::handler::handle_mock_request)
         .layer(DefaultBodyLimit::max(state.config.max_body_size))
         .with_state(state)
+}
+
+/// Build a router that dispatches to `api_router` or `mock_router` based on
+/// whether the request's Host header matches `api_domain`.
+pub fn build_domain_dispatch_router(
+    api_router: Router,
+    mock_router: Router,
+    api_domain: &str,
+) -> Router {
+    let api_domain = api_domain.to_lowercase();
+
+    Router::new().fallback(move |request: Request| {
+        let api = api_router.clone();
+        let mock = mock_router.clone();
+        let domain = api_domain.clone();
+        async move {
+            let host = super::handler::extract_domain(request.headers());
+            let router = if host.as_deref() == Some(domain.as_str()) {
+                api
+            } else {
+                mock
+            };
+            match router.oneshot(request).await {
+                Ok(resp) => resp,
+                Err(err) => match err {},
+            }
+        }
+    })
 }

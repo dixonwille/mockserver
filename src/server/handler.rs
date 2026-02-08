@@ -159,7 +159,7 @@ pub async fn handle_mock_request(
 
 /// Extract domain from request headers
 /// Priority: X-Original-Host > X-Forwarded-Host > Host
-fn extract_domain(headers: &HeaderMap) -> Option<String> {
+pub(crate) fn extract_domain(headers: &HeaderMap) -> Option<String> {
     // Try headers in priority order
     let raw = headers
         .get("x-original-host")
@@ -583,5 +583,102 @@ mod tests {
             response.headers().get("content-type").unwrap(),
             "application/json"
         );
+    }
+
+    // ==================== domain routing dispatch tests ====================
+
+    use axum::Router;
+    use axum::routing::any;
+    use tower::ServiceExt;
+
+    /// Build a domain-routing app using the real dispatch function with stub routers.
+    fn build_domain_dispatch_app(api_domain: &str) -> Router {
+        let api_router =
+            Router::new().route("/api/healthz", any(|| async { (StatusCode::OK, "api") }));
+        let mock_router = Router::new().fallback(|| async { (StatusCode::OK, "mock") });
+
+        crate::server::build_domain_dispatch_router(api_router, mock_router, api_domain)
+    }
+
+    #[tokio::test]
+    async fn test_domain_routing_api_domain_routes_to_api() {
+        let app = build_domain_dispatch_app("admin.local");
+        let request = Request::builder()
+            .uri("/api/healthz")
+            .header("host", "admin.local")
+            .body(Body::empty())
+            .unwrap();
+
+        let response = app.oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 1024)
+            .await
+            .unwrap();
+        assert_eq!(&body[..], b"api");
+    }
+
+    #[tokio::test]
+    async fn test_domain_routing_non_api_domain_routes_to_mock() {
+        let app = build_domain_dispatch_app("admin.local");
+        let request = Request::builder()
+            .uri("/anything")
+            .header("host", "example.com")
+            .body(Body::empty())
+            .unwrap();
+
+        let response = app.oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 1024)
+            .await
+            .unwrap();
+        assert_eq!(&body[..], b"mock");
+    }
+
+    #[tokio::test]
+    async fn test_domain_routing_api_domain_unknown_path_returns_404() {
+        let app = build_domain_dispatch_app("admin.local");
+        let request = Request::builder()
+            .uri("/unknown")
+            .header("host", "admin.local")
+            .body(Body::empty())
+            .unwrap();
+
+        let response = app.oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn test_domain_routing_case_insensitive() {
+        let app = build_domain_dispatch_app("admin.local");
+        let request = Request::builder()
+            .uri("/api/healthz")
+            .header("host", "ADMIN.LOCAL:8080")
+            .body(Body::empty())
+            .unwrap();
+
+        let response = app.oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 1024)
+            .await
+            .unwrap();
+        assert_eq!(&body[..], b"api");
+    }
+
+    #[tokio::test]
+    async fn test_domain_routing_x_forwarded_host() {
+        let app = build_domain_dispatch_app("admin.local");
+        let request = Request::builder()
+            .uri("/api/healthz")
+            .header("host", "backend.internal")
+            .header("x-forwarded-host", "admin.local")
+            .body(Body::empty())
+            .unwrap();
+
+        let response = app.oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 1024)
+            .await
+            .unwrap();
+        assert_eq!(&body[..], b"api");
     }
 }

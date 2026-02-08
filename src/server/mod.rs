@@ -10,4 +10,4 @@ mod handler;
 mod router;
 
 pub use handler::handle_mock_request;
-pub use router::{AppState, build_mock_router};
+pub use router::{AppState, build_domain_dispatch_router, build_mock_router};

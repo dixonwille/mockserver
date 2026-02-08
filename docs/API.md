@@ -10,7 +10,7 @@ The Admin API can be reached three ways (mutually exclusive):
 |------|------|-------------|
 | Separate port (default) | `--api-port 3001` | API on its own port; mock server on `--port` |
 | Path prefix | `--api-prefix /_api` | API under prefix on mock port (e.g., `/_api/api/requests`) |
-| Domain | `--api-domain admin.local` | API when Host header matches; all other hosts go to mocks. **Not fully implemented.** |
+| Domain | `--api-domain admin.local` | API when Host header matches; all other hosts go to mocks |
 
 See [CLI.md](./CLI.md) for the full flag reference.
 
