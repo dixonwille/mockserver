@@ -140,57 +140,7 @@ Follow standard Rust naming conventions:
 
 ## Project Structure
 
-```
-src/
-  main.rs           # Entry point, CLI argument parsing
-  lib.rs            # Library root, re-exports
-  config.rs         # Configuration types and loading
-  error.rs          # Error types (thiserror)
-  templates.rs      # Embedded file templates
-
-  cli/              # CLI subcommands
-    mod.rs
-    init.rs         # `mockserver init` - initialize mocks directory
-    new.rs          # `mockserver new` - create new domain mock
-    serve.rs        # `mockserver serve` - start the server
-    check.rs        # `mockserver check` - validate Lua scripts
-
-  server/           # Mock server (handles incoming requests)
-    mod.rs
-    router.rs       # Domain-based request routing
-    handler.rs      # Request handling and Lua execution
-
-  api/              # Admin API (request inspection, config)
-    mod.rs
-    router.rs       # API route definitions
-    handlers/       # API endpoint handlers
-      health.rs     # Health check endpoint
-      requests.rs   # Request query endpoints
-      cleanup.rs    # Data cleanup endpoints
-      config.rs     # Configuration endpoints
-
-  lua/              # Lua runtime integration
-    mod.rs
-    manager.rs      # Lua VM pool management
-    sandbox.rs      # Sandboxed execution environment
-    modules/        # Lua standard library modules
-      json.rs       # JSON encoding/decoding
-      log.rs        # Logging functions
-      delay.rs      # Async delay/sleep
-      uuid.rs       # UUID generation
-      time.rs       # Time utilities
-      fs.rs         # Filesystem access (sandboxed)
-      state.rs      # Persistent state storage
-
-  db/               # SQLite database layer
-    mod.rs
-    migrations.rs   # Schema migrations
-    models.rs       # Data models
-    queries.rs      # Database queries
-
-  watcher/          # File watching for hot reload
-    mod.rs
-```
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design rationale and a component overview.
 
 ## Making Changes
 
