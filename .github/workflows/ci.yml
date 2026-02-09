@@ -43,7 +43,7 @@ jobs:
     name: Format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
@@ -53,7 +53,7 @@ jobs:
     name: Clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
@@ -66,7 +66,7 @@ jobs:
     name: Cargo Deny
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command-arguments: --config .config/deny.toml
@@ -75,7 +75,7 @@ jobs:
     name: REUSE Compliance
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: fsfe/reuse-action@v5
 
   build-and-test:
@@ -99,7 +99,7 @@ jobs:
         if: ${{ matrix.run-on-pr || github.event_name == 'push' }}
         run: echo "run=true" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         if: steps.check.outputs.run == 'true'
 
       - uses: dtolnay/rust-toolchain@stable
@@ -149,7 +149,7 @@ jobs:
     needs: [build-and-test]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/download-artifact@v4
         with:
           name: integration-test-binary
