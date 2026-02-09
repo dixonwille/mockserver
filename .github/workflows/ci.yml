@@ -75,17 +75,26 @@ jobs:
       - uses: fsfe/reuse-action@v5
 
   build-and-test:
-    name: Build & Test (${{ matrix.os }})
+    name: Build & Test (${{ matrix.name }})
     needs: [fmt, clippy]
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - name: Linux x86_64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
             run-on-pr: true
-          - os: macos-latest
+          - name: Linux aarch64
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            cross: true
             run-on-pr: false
-          - os: windows-latest
+          - name: macOS
+            os: macos-latest
+            run-on-pr: false
+          - name: Windows
+            os: windows-latest
             run-on-pr: false
     runs-on: ${{ matrix.os }}
     if: ${{ always() && !cancelled() && !contains(needs.*.result, 'failure') }}
@@ -93,6 +102,7 @@ jobs:
       - name: Check if should run
         id: check
         if: ${{ matrix.run-on-pr || github.event_name == 'push' }}
+        shell: bash
         run: echo "run=true" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@v6
@@ -101,23 +111,44 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         if: steps.check.outputs.run == 'true'
 
+      - name: Add Rust target
+        if: steps.check.outputs.run == 'true' && matrix.target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Install musl-tools
+        if: steps.check.outputs.run == 'true' && matrix.target == 'x86_64-unknown-linux-musl'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Install cross
+        if: steps.check.outputs.run == 'true' && matrix.cross
+        run: cargo install cross --git https://github.com/cross-rs/cross --tag v0.2.5
+
       - uses: Swatinem/rust-cache@v2
         if: steps.check.outputs.run == 'true'
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
+          key: ${{ matrix.target || 'native' }}
 
       - name: Build release
-        if: steps.check.outputs.run == 'true'
-        run: cargo build --release
+        if: steps.check.outputs.run == 'true' && !matrix.cross
+        run: cargo build --release ${{ matrix.target && format('--target {0}', matrix.target) || '' }}
+
+      - name: Build release (cross)
+        if: steps.check.outputs.run == 'true' && matrix.cross
+        run: cross build --release --target ${{ matrix.target }}
 
       - name: Verify static linking (Linux)
-        if: steps.check.outputs.run == 'true' && runner.os == 'Linux'
+        if: steps.check.outputs.run == 'true' && runner.os == 'Linux' && !matrix.cross
         run: |
+          BINARY="target/${{ matrix.target }}/release/mockserver"
           echo "Checking dynamic dependencies..."
-          ldd target/release/mockserver
-          echo "Verifying SQLite and Lua are NOT dynamically linked..."
-          ! ldd target/release/mockserver | grep -qiE "(sqlite|lua)" || exit 1
-          echo "Static linking verified!"
+          if ldd "$BINARY" 2>&1 | grep -q "not a dynamic executable\|statically linked"; then
+            echo "Binary is fully static!"
+          else
+            ldd "$BINARY"
+            echo "::error::Binary is not fully static"
+            exit 1
+          fi
 
       - name: Verify static linking (macOS)
         if: steps.check.outputs.run == 'true' && runner.os == 'macOS'
@@ -129,15 +160,15 @@ jobs:
           echo "Static linking verified!"
 
       - name: Run tests
-        if: steps.check.outputs.run == 'true'
-        run: cargo test --all-features
+        if: steps.check.outputs.run == 'true' && !matrix.cross
+        run: cargo test --all-features ${{ matrix.target && format('--target {0}', matrix.target) || '' }}
 
       - name: Upload binary for integration tests
-        if: steps.check.outputs.run == 'true' && runner.os == 'Linux'
+        if: steps.check.outputs.run == 'true' && matrix.target == 'x86_64-unknown-linux-musl'
         uses: actions/upload-artifact@v6
         with:
           name: integration-test-binary
-          path: target/release/mockserver
+          path: target/${{ matrix.target }}/release/mockserver
           retention-days: 1
 
   integration-test:

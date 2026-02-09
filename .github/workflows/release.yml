@@ -52,10 +52,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - target: x86_64-unknown-linux-gnu
+          - target: x86_64-unknown-linux-musl
             os: ubuntu-latest
             cross: false
-          - target: aarch64-unknown-linux-gnu
+          - target: aarch64-unknown-linux-musl
             os: ubuntu-latest
             cross: true
           - target: x86_64-apple-darwin
@@ -77,6 +77,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@4be9e76fd7c4901c61fb841f559994984270fce7 # stable
 
       - run: rustup target add ${{ matrix.target }}
+
+      - name: Install musl-tools
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
 
       - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
         with:
@@ -230,11 +234,11 @@ jobs:
           mkdir -p binaries/amd64 binaries/arm64
 
           # Copy x86_64 binary
-          cp artifacts/binary-x86_64-unknown-linux-gnu/mockserver binaries/amd64/
+          cp artifacts/binary-x86_64-unknown-linux-musl/mockserver binaries/amd64/
           chmod +x binaries/amd64/mockserver
 
           # Copy aarch64 binary
-          cp artifacts/binary-aarch64-unknown-linux-gnu/mockserver binaries/arm64/
+          cp artifacts/binary-aarch64-unknown-linux-musl/mockserver binaries/arm64/
           chmod +x binaries/arm64/mockserver
 
           echo "Prepared binaries:"
