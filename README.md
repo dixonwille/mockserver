@@ -1,7 +1,7 @@
 # mockserver
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/dixonwille/mockserver/ci.yml?branch=main)](https://github.com/dixonwille/mockserver/actions)
+[![Build Status](https://github.com/dixonwille/mockserver/actions/workflows/ci.yml/badge.svg)](https://github.com/dixonwille/mockserver/actions/workflows/ci.yml)
 
 A Lua-powered HTTP mock server for API development and testing.
 
