@@ -110,7 +110,7 @@ jobs:
           Set-Content -Path artifacts/target.txt -Value "${{ matrix.target }}"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@47309c993abb98030a35d55ef7ff34b7fa1074b5 # v4.6.2
         with:
           name: binary-${{ matrix.target }}
           path: artifacts/
@@ -135,7 +135,7 @@ jobs:
           cp LICENSES/AGPL-3.0-only.txt LICENSE
           cargo about generate -c .config/about.toml .config/about.hbs > THIRD_PARTY_LICENSES
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@47309c993abb98030a35d55ef7ff34b7fa1074b5 # v4.6.2
         with:
           name: licenses
           path: |
