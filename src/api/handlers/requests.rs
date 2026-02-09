@@ -525,4 +525,165 @@ mod tests {
         let json: DeleteResponse = serde_json::from_slice(&body).unwrap();
         assert_eq!(json.deleted, 0);
     }
+
+    // ==================== additional coverage tests ====================
+
+    #[tokio::test]
+    async fn test_get_request_response_no_response() {
+        let (state, _temp) = test_state().await;
+
+        // Store a request but no response
+        let req = test_request_record("example.com", "GET", "/test");
+        store_request(&state.db, &req).await.unwrap();
+
+        let app = requests_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri(format!("/api/requests/{}/response", req.id))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        // Request exists but has no response -> 404
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+
+        let body = axum::body::to_bytes(response.into_body(), 10000)
+            .await
+            .unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["message"], "Response not found for this request");
+    }
+
+    #[tokio::test]
+    async fn test_get_request_response_invalid_uuid() {
+        let (state, _temp) = test_state().await;
+        let app = requests_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/requests/not-a-uuid/response")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn test_list_requests_filter_by_method() {
+        let (state, _temp) = test_state().await;
+
+        store_request(&state.db, &test_request_record("example.com", "GET", "/a"))
+            .await
+            .unwrap();
+        store_request(&state.db, &test_request_record("example.com", "POST", "/b"))
+            .await
+            .unwrap();
+        store_request(&state.db, &test_request_record("example.com", "GET", "/c"))
+            .await
+            .unwrap();
+
+        let app = requests_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/requests?method=POST")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        let body = axum::body::to_bytes(response.into_body(), 10000)
+            .await
+            .unwrap();
+        let json: ListRequestsResponse = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json.total, 1);
+        assert_eq!(json.requests[0].method, "POST");
+    }
+
+    #[tokio::test]
+    async fn test_list_requests_filter_by_path() {
+        let (state, _temp) = test_state().await;
+
+        store_request(
+            &state.db,
+            &test_request_record("example.com", "GET", "/api/users"),
+        )
+        .await
+        .unwrap();
+        store_request(
+            &state.db,
+            &test_request_record("example.com", "GET", "/api/posts"),
+        )
+        .await
+        .unwrap();
+        store_request(
+            &state.db,
+            &test_request_record("example.com", "GET", "/health"),
+        )
+        .await
+        .unwrap();
+
+        let app = requests_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/requests?path=users")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        let body = axum::body::to_bytes(response.into_body(), 10000)
+            .await
+            .unwrap();
+        let json: ListRequestsResponse = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json.total, 1);
+        assert!(json.requests[0].path.contains("users"));
+    }
+
+    #[tokio::test]
+    async fn test_list_requests_pagination() {
+        let (state, _temp) = test_state().await;
+
+        for i in 0..5 {
+            store_request(
+                &state.db,
+                &test_request_record("example.com", "GET", &format!("/path/{i}")),
+            )
+            .await
+            .unwrap();
+        }
+
+        let app = requests_router(state);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/requests?limit=2&offset=1")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        let body = axum::body::to_bytes(response.into_body(), 10000)
+            .await
+            .unwrap();
+        let json: ListRequestsResponse = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json.total, 2);
+        assert_eq!(json.limit, 2);
+        assert_eq!(json.offset, 1);
+    }
 }

@@ -163,4 +163,222 @@ mod tests {
         .exec()
         .unwrap();
     }
+
+    #[test]
+    fn test_register_stub_modules() {
+        let lua = Lua::new();
+        register_stub_modules(&lua).unwrap();
+
+        // Each stub module should return an empty table
+        for &name in MODULE_NAMES {
+            let result: Table = lua
+                .load(format!("return require('{name}')"))
+                .eval()
+                .unwrap();
+            assert_eq!(
+                result.clone().pairs::<Value, Value>().count(),
+                0,
+                "Stub module '{name}' should be an empty table"
+            );
+        }
+    }
+
+    // ==================== lua_to_json tests ====================
+
+    #[test]
+    fn test_lua_to_json_nil() {
+        let lua = Lua::new();
+        let result = lua_to_json(&lua, Value::Nil).unwrap();
+        assert_eq!(result, serde_json::Value::Null);
+    }
+
+    #[test]
+    fn test_lua_to_json_boolean() {
+        let lua = Lua::new();
+        assert_eq!(
+            lua_to_json(&lua, Value::Boolean(true)).unwrap(),
+            serde_json::Value::Bool(true)
+        );
+        assert_eq!(
+            lua_to_json(&lua, Value::Boolean(false)).unwrap(),
+            serde_json::Value::Bool(false)
+        );
+    }
+
+    #[test]
+    fn test_lua_to_json_integer() {
+        let lua = Lua::new();
+        let result = lua_to_json(&lua, Value::Integer(42)).unwrap();
+        assert_eq!(result, serde_json::json!(42));
+    }
+
+    #[test]
+    fn test_lua_to_json_float() {
+        let lua = Lua::new();
+        let result = lua_to_json(&lua, Value::Number(2.75)).unwrap();
+        assert_eq!(result, serde_json::json!(2.75));
+    }
+
+    #[test]
+    fn test_lua_to_json_string() {
+        let lua = Lua::new();
+        let lua_str = lua.create_string("hello").unwrap();
+        let result = lua_to_json(&lua, Value::String(lua_str)).unwrap();
+        assert_eq!(result, serde_json::json!("hello"));
+    }
+
+    #[test]
+    fn test_lua_to_json_nan_errors() {
+        let lua = Lua::new();
+        let result = lua_to_json(&lua, Value::Number(f64::NAN));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_lua_to_json_infinity_errors() {
+        let lua = Lua::new();
+        let result = lua_to_json(&lua, Value::Number(f64::INFINITY));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_lua_to_json_sequential_array() {
+        let lua = Lua::new();
+        let table = lua.create_table().unwrap();
+        table.set(1, "a").unwrap();
+        table.set(2, "b").unwrap();
+        table.set(3, "c").unwrap();
+
+        let result = lua_to_json(&lua, Value::Table(table)).unwrap();
+        assert_eq!(result, serde_json::json!(["a", "b", "c"]));
+    }
+
+    #[test]
+    fn test_lua_to_json_object() {
+        let lua = Lua::new();
+        let table = lua.create_table().unwrap();
+        table.set("name", "test").unwrap();
+        table.set("value", 42).unwrap();
+
+        let result = lua_to_json(&lua, Value::Table(table)).unwrap();
+        assert_eq!(result["name"], serde_json::json!("test"));
+        assert_eq!(result["value"], serde_json::json!(42));
+    }
+
+    #[test]
+    fn test_lua_to_json_mixed_table() {
+        let lua = Lua::new();
+        // Table with both integer and string keys — has 3 pairs total but raw_len=2
+        // So it will be treated as an object
+        let table = lua.create_table().unwrap();
+        table.set(1, "first").unwrap();
+        table.set(2, "second").unwrap();
+        table.set("extra", "value").unwrap();
+
+        let result = lua_to_json(&lua, Value::Table(table)).unwrap();
+        assert!(result.is_object());
+    }
+
+    #[test]
+    fn test_lua_to_json_empty_table() {
+        let lua = Lua::new();
+        let table = lua.create_table().unwrap();
+        let result = lua_to_json(&lua, Value::Table(table)).unwrap();
+        // Empty table: raw_len is 0 and pair count is 0, so it goes to the object branch
+        assert_eq!(result, serde_json::json!({}));
+    }
+
+    #[test]
+    fn test_lua_to_json_unsupported_type_errors() {
+        let lua = Lua::new();
+        let func = lua.create_function(|_, ()| Ok(())).unwrap();
+        let result = lua_to_json(&lua, Value::Function(func));
+        assert!(result.is_err());
+    }
+
+    // ==================== json_to_lua tests ====================
+
+    #[test]
+    fn test_json_to_lua_null() {
+        let lua = Lua::new();
+        let result = json_to_lua(&lua, serde_json::Value::Null).unwrap();
+        assert!(matches!(result, Value::Nil));
+    }
+
+    #[test]
+    fn test_json_to_lua_bool() {
+        let lua = Lua::new();
+        let result = json_to_lua(&lua, serde_json::json!(true)).unwrap();
+        assert!(matches!(result, Value::Boolean(true)));
+    }
+
+    #[test]
+    fn test_json_to_lua_integer() {
+        let lua = Lua::new();
+        let result = json_to_lua(&lua, serde_json::json!(42)).unwrap();
+        assert!(matches!(result, Value::Integer(42)));
+    }
+
+    #[test]
+    fn test_json_to_lua_float() {
+        let lua = Lua::new();
+        let result = json_to_lua(&lua, serde_json::json!(2.75)).unwrap();
+        match result {
+            Value::Number(n) => assert!((n - 2.75).abs() < f64::EPSILON),
+            _ => panic!("expected Number, got {:?}", result),
+        }
+    }
+
+    #[test]
+    fn test_json_to_lua_string() {
+        let lua = Lua::new();
+        let result = json_to_lua(&lua, serde_json::json!("hello")).unwrap();
+        match result {
+            Value::String(s) => assert_eq!(s.to_str().unwrap(), "hello"),
+            _ => panic!("expected String"),
+        }
+    }
+
+    #[test]
+    fn test_json_to_lua_array() {
+        let lua = Lua::new();
+        let result = json_to_lua(&lua, serde_json::json!([1, 2, 3])).unwrap();
+        match result {
+            Value::Table(t) => {
+                assert_eq!(t.get::<i64>(1).unwrap(), 1);
+                assert_eq!(t.get::<i64>(2).unwrap(), 2);
+                assert_eq!(t.get::<i64>(3).unwrap(), 3);
+            }
+            _ => panic!("expected Table"),
+        }
+    }
+
+    #[test]
+    fn test_json_to_lua_object() {
+        let lua = Lua::new();
+        let result = json_to_lua(&lua, serde_json::json!({"key": "value"})).unwrap();
+        match result {
+            Value::Table(t) => {
+                assert_eq!(t.get::<String>("key").unwrap(), "value");
+            }
+            _ => panic!("expected Table"),
+        }
+    }
+
+    #[test]
+    fn test_json_to_lua_roundtrip() {
+        let lua = Lua::new();
+        let original = serde_json::json!({
+            "name": "test",
+            "count": 42,
+            "active": true,
+            "tags": ["a", "b"],
+            "nested": {"key": "val"}
+        });
+
+        let lua_val = json_to_lua(&lua, original.clone()).unwrap();
+        let back = lua_to_json(&lua, lua_val).unwrap();
+
+        assert_eq!(original, back);
+    }
 }

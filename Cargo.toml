@@ -15,6 +15,7 @@ tokio = { version = "1", features = [
   "sync",
   "time",
   "net",
+  "test-util",
 ] }
 tower = { version = "0.5", features = ["util"] }
 

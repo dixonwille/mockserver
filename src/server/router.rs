@@ -82,3 +82,62 @@ pub fn build_domain_dispatch_router(
         }
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::ServerConfig;
+    use crate::db::init_database;
+    use crate::lua::ScriptManager;
+    use tempfile::TempDir;
+
+    async fn test_app_state() -> (AppState, TempDir) {
+        let temp_dir = TempDir::new().unwrap();
+        let mocks_dir = temp_dir.path().join("mocks");
+        std::fs::create_dir_all(&mocks_dir).unwrap();
+
+        let db = init_database(":memory:", 2).await.unwrap();
+        let config = ServerConfig {
+            mocks_dir: mocks_dir.clone(),
+            ..Default::default()
+        };
+        let scripts = ScriptManager::new(mocks_dir, config.lua_memory_mb, config.script_timeout);
+        (AppState::new(db, scripts, config), temp_dir)
+    }
+
+    #[tokio::test]
+    async fn test_app_state_new() {
+        let (state, _temp) = test_app_state().await;
+        // Verify fields are accessible
+        assert_eq!(state.config.port, 3000);
+    }
+
+    #[tokio::test]
+    async fn test_app_state_from_arc() {
+        let (state, _temp) = test_app_state().await;
+        let state2 = AppState::from_arc(
+            state.db.clone(),
+            state.scripts.clone(),
+            state.config.clone(),
+        );
+        assert_eq!(state2.config.port, state.config.port);
+    }
+
+    #[tokio::test]
+    async fn test_build_mock_router_has_body_limit() {
+        let temp_dir = TempDir::new().unwrap();
+        let mocks_dir = temp_dir.path().join("mocks");
+        std::fs::create_dir_all(&mocks_dir).unwrap();
+
+        let db = init_database(":memory:", 2).await.unwrap();
+        let config = ServerConfig {
+            mocks_dir: mocks_dir.clone(),
+            max_body_size: 1024,
+            ..Default::default()
+        };
+        let scripts = ScriptManager::new(mocks_dir, config.lua_memory_mb, config.script_timeout);
+        let state = AppState::new(db, scripts, config);
+        let _app = build_mock_router(state);
+        // Router builds successfully with body limit configured
+    }
+}

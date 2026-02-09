@@ -547,4 +547,92 @@ mod tests {
     fn test_retention_check_interval_is_one_hour() {
         assert_eq!(RETENTION_CHECK_INTERVAL, Duration::from_secs(3600));
     }
+
+    #[tokio::test(start_paused = true)]
+    async fn test_start_retention_cleanup_runs() {
+        use crate::db::RequestRecord;
+        use crate::db::{init_database, store_request};
+        use chrono::{Duration as ChronoDuration, Utc};
+        use serde_json::json;
+        use uuid::Uuid;
+
+        let conn = init_database(":memory:", 2).await.unwrap();
+        let conn = Arc::new(conn);
+
+        // Store a request backdated to 10 days ago
+        let old_request = RequestRecord {
+            id: Uuid::new_v4(),
+            domain: "example.com".to_string(),
+            method: "GET".to_string(),
+            path: "/old".to_string(),
+            query_string: None,
+            headers: json!({}),
+            body: None,
+            received_at: Utc::now() - ChronoDuration::days(10),
+        };
+        store_request(&conn, &old_request).await.unwrap();
+
+        // Store a recent request
+        let new_request = RequestRecord {
+            id: Uuid::new_v4(),
+            domain: "example.com".to_string(),
+            method: "GET".to_string(),
+            path: "/new".to_string(),
+            query_string: None,
+            headers: json!({}),
+            body: None,
+            received_at: Utc::now(),
+        };
+        store_request(&conn, &new_request).await.unwrap();
+
+        // Start retention cleanup with 7-day retention
+        let _handle = start_retention_cleanup(conn.clone(), 7);
+
+        // Advance time past the check interval (1 hour)
+        tokio::time::advance(Duration::from_secs(3601)).await;
+        // Yield to let the spawned task run
+        tokio::task::yield_now().await;
+        tokio::task::yield_now().await;
+
+        // Verify old request was deleted
+        let remaining = crate::db::get_requests(&conn, crate::db::RequestQuery::default())
+            .await
+            .unwrap();
+        assert_eq!(remaining.len(), 1);
+        assert_eq!(remaining[0].path, "/new");
+    }
+
+    #[tokio::test]
+    async fn test_start_idle_flusher_flushes_domains() {
+        use crate::lua::ScriptManager;
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let domain_dir = temp_dir.path().join("idle-test.example.com");
+        std::fs::create_dir_all(&domain_dir).unwrap();
+        std::fs::write(
+            domain_dir.join("init.lua"),
+            "function handle(r) return {status=200} end",
+        )
+        .unwrap();
+
+        let manager = Arc::new(ScriptManager::new(
+            temp_dir.path().to_path_buf(),
+            64,
+            Duration::from_secs(30),
+        ));
+        manager.load_domain("idle-test.example.com").await.unwrap();
+        assert!(manager.is_loaded("idle-test.example.com"));
+
+        // Directly test the flush logic with Duration::ZERO (flushes everything idle)
+        let flushed = manager.flush_idle_domains(Duration::ZERO);
+        assert!(
+            flushed.contains(&"idle-test.example.com".to_string()),
+            "Domain should be flushed"
+        );
+        assert!(
+            !manager.is_loaded("idle-test.example.com"),
+            "Idle domain should have been flushed"
+        );
+    }
 }

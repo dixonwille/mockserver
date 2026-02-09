@@ -75,4 +75,40 @@ mod tests {
         .exec()
         .unwrap();
     }
+
+    #[test]
+    fn test_log_debug_callable() {
+        let lua = Lua::new();
+        register(&lua, "test.domain").unwrap();
+        lua.load(r#"require("log").debug("test debug")"#)
+            .exec()
+            .unwrap();
+    }
+
+    #[test]
+    fn test_log_info_callable() {
+        let lua = Lua::new();
+        register(&lua, "test.domain").unwrap();
+        lua.load(r#"require("log").info("test info")"#)
+            .exec()
+            .unwrap();
+    }
+
+    #[test]
+    fn test_log_warn_callable() {
+        let lua = Lua::new();
+        register(&lua, "test.domain").unwrap();
+        lua.load(r#"require("log").warn("test warn")"#)
+            .exec()
+            .unwrap();
+    }
+
+    #[test]
+    fn test_log_error_callable() {
+        let lua = Lua::new();
+        register(&lua, "test.domain").unwrap();
+        lua.load(r#"require("log").error("test error")"#)
+            .exec()
+            .unwrap();
+    }
 }

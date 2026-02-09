@@ -993,6 +993,178 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_default_fallback_for_unknown_domain() {
+        let temp_dir = TempDir::new().unwrap();
+        create_test_domain(
+            &temp_dir,
+            "_default",
+            r#"
+            function handle(request)
+                return { status = 200, body = "default" }
+            end
+            "#,
+        );
+
+        let manager =
+            ScriptManager::new(temp_dir.path().to_path_buf(), 64, Duration::from_secs(30));
+        manager.load_domain("_default").await.unwrap();
+
+        // Request for a domain that doesn't exist should fall back to _default
+        let request = LuaRequest {
+            method: "GET".to_string(),
+            path: "/".to_string(),
+            query: HashMap::new(),
+            headers: HashMap::new(),
+            body: String::new(),
+            domain: "unknown.example.com".to_string(),
+        };
+
+        let response = manager.execute(request).await.unwrap();
+        assert_eq!(response.status, 200);
+        assert_eq!(response.body, "default");
+    }
+
+    #[tokio::test]
+    async fn test_script_not_found_no_default() {
+        let temp_dir = TempDir::new().unwrap();
+        // Empty mocks dir — no domains at all
+        let manager =
+            ScriptManager::new(temp_dir.path().to_path_buf(), 64, Duration::from_secs(30));
+
+        let request = LuaRequest {
+            method: "GET".to_string(),
+            path: "/".to_string(),
+            query: HashMap::new(),
+            headers: HashMap::new(),
+            body: String::new(),
+            domain: "missing.example.com".to_string(),
+        };
+
+        let result = manager.execute(request).await;
+        assert!(
+            matches!(result, Err(Error::ScriptNotFound(_))),
+            "Expected ScriptNotFound, got: {result:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_unload_domain_removes_pool() {
+        let temp_dir = TempDir::new().unwrap();
+        create_test_domain(
+            &temp_dir,
+            "unload.example.com",
+            "function handle(r) return {status=200} end",
+        );
+
+        let manager =
+            ScriptManager::new(temp_dir.path().to_path_buf(), 64, Duration::from_secs(30));
+        manager.load_domain("unload.example.com").await.unwrap();
+        assert!(manager.is_loaded("unload.example.com"));
+
+        manager.unload_domain("unload.example.com").await;
+        assert!(!manager.is_loaded("unload.example.com"));
+    }
+
+    #[tokio::test]
+    async fn test_loaded_domains_returns_all() {
+        let temp_dir = TempDir::new().unwrap();
+        create_test_domain(
+            &temp_dir,
+            "_default",
+            "function handle(r) return {status=200} end",
+        );
+        create_test_domain(
+            &temp_dir,
+            "a.example.com",
+            "function handle(r) return {status=200} end",
+        );
+        create_test_domain(
+            &temp_dir,
+            "b.example.com",
+            "function handle(r) return {status=200} end",
+        );
+
+        let manager =
+            ScriptManager::new(temp_dir.path().to_path_buf(), 64, Duration::from_secs(30));
+        manager.load_domain("_default").await.unwrap();
+        manager.load_domain("a.example.com").await.unwrap();
+        manager.load_domain("b.example.com").await.unwrap();
+
+        let mut domains = manager.loaded_domains();
+        domains.sort();
+        assert_eq!(domains, vec!["_default", "a.example.com", "b.example.com"]);
+    }
+
+    #[test]
+    fn test_list_domains_skips_hidden_dirs() {
+        let temp_dir = TempDir::new().unwrap();
+        std::fs::create_dir_all(temp_dir.path().join(".git")).unwrap();
+        std::fs::create_dir_all(temp_dir.path().join(".mockserver")).unwrap();
+        std::fs::create_dir_all(temp_dir.path().join("_default")).unwrap();
+        std::fs::write(temp_dir.path().join("_default/init.lua"), "").unwrap();
+
+        let domains = list_domains(temp_dir.path()).unwrap();
+        let names: Vec<&str> = domains.iter().map(|d| d.name.as_str()).collect();
+        assert!(!names.contains(&".git"));
+        assert!(!names.contains(&".mockserver"));
+        assert!(names.contains(&"_default"));
+    }
+
+    #[test]
+    fn test_list_domains_empty_dir() {
+        let temp_dir = TempDir::new().unwrap();
+        let domains = list_domains(temp_dir.path()).unwrap();
+        assert!(domains.is_empty());
+    }
+
+    #[test]
+    fn test_domain_init_path() {
+        let temp_dir = TempDir::new().unwrap();
+        let manager =
+            ScriptManager::new(temp_dir.path().to_path_buf(), 64, Duration::from_secs(30));
+        assert_eq!(
+            manager.domain_init_path("example.com"),
+            temp_dir.path().join("example.com").join("init.lua")
+        );
+    }
+
+    #[test]
+    fn test_mocks_dir_accessor() {
+        let temp_dir = TempDir::new().unwrap();
+        let manager =
+            ScriptManager::new(temp_dir.path().to_path_buf(), 64, Duration::from_secs(30));
+        assert_eq!(manager.mocks_dir(), temp_dir.path());
+    }
+
+    #[test]
+    fn test_pool_config_accessor() {
+        let temp_dir = TempDir::new().unwrap();
+        let manager =
+            ScriptManager::new(temp_dir.path().to_path_buf(), 64, Duration::from_secs(30));
+        let pool_config = manager.pool_config();
+        assert_eq!(pool_config.shrink_interval, Duration::from_secs(60));
+        assert_eq!(pool_config.idle_timeout, Duration::from_secs(30));
+    }
+
+    #[tokio::test]
+    async fn test_load_domain_syntax_error() {
+        let temp_dir = TempDir::new().unwrap();
+        create_test_domain(
+            &temp_dir,
+            "syntax-error.example.com",
+            "this is not valid lua {{{}}}",
+        );
+
+        let manager =
+            ScriptManager::new(temp_dir.path().to_path_buf(), 64, Duration::from_secs(30));
+        let result = manager.load_domain("syntax-error.example.com").await;
+        assert!(
+            matches!(result, Err(Error::Lua(_))),
+            "Expected Lua error, got: {result:?}"
+        );
+    }
+
+    #[tokio::test]
     async fn test_vm_discarded_after_timeout() {
         let temp_dir = TempDir::new().unwrap();
         create_test_domain(

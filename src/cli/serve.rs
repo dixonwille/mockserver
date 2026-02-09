@@ -260,3 +260,118 @@ impl ServeArgs {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn default_serve_args() -> ServeArgs {
+        ServeArgs {
+            port: 3000,
+            dir: PathBuf::from("./mocks"),
+            data_dir: PathBuf::from("./data"),
+            api_port: 3001,
+            api_prefix: None,
+            api_domain: None,
+            host: "127.0.0.1".to_string(),
+            retention: 7,
+            max_body: 10485760,
+            script_timeout: 30,
+            idle_timeout: 30,
+            lua_memory: 64,
+            db_cache: 64,
+            no_watch: false,
+        }
+    }
+
+    #[test]
+    fn test_serve_args_default_separate_port() {
+        let args = default_serve_args();
+        let config = ServerConfig::from(args);
+        assert!(matches!(
+            config.api_routing,
+            ApiRoutingMode::SeparatePort { port: 3001 }
+        ));
+    }
+
+    #[test]
+    fn test_serve_args_api_domain_strips_port() {
+        let mut args = default_serve_args();
+        args.api_domain = Some("admin.local:8080".to_string());
+        let config = ServerConfig::from(args);
+        assert!(matches!(
+            config.api_routing,
+            ApiRoutingMode::Domain { ref domain } if domain == "admin.local"
+        ));
+    }
+
+    #[test]
+    fn test_serve_args_api_domain_lowercases() {
+        let mut args = default_serve_args();
+        args.api_domain = Some("ADMIN.LOCAL".to_string());
+        let config = ServerConfig::from(args);
+        assert!(matches!(
+            config.api_routing,
+            ApiRoutingMode::Domain { ref domain } if domain == "admin.local"
+        ));
+    }
+
+    #[test]
+    fn test_serve_args_api_prefix() {
+        let mut args = default_serve_args();
+        args.api_prefix = Some("/_admin".to_string());
+        let config = ServerConfig::from(args);
+        assert!(matches!(
+            config.api_routing,
+            ApiRoutingMode::PathPrefix { ref prefix } if prefix == "/_admin"
+        ));
+    }
+
+    #[test]
+    fn test_serve_args_idle_timeout_converts_minutes() {
+        let mut args = default_serve_args();
+        args.idle_timeout = 30;
+        let config = ServerConfig::from(args);
+        assert_eq!(config.idle_timeout, std::time::Duration::from_secs(1800));
+    }
+
+    #[test]
+    fn test_serve_args_no_watch_disables_watch() {
+        let mut args = default_serve_args();
+        args.no_watch = true;
+        let config = ServerConfig::from(args);
+        assert!(!config.watch_enabled);
+    }
+
+    #[test]
+    fn test_serve_args_field_mapping() {
+        let args = ServeArgs {
+            port: 8080,
+            dir: PathBuf::from("/custom/mocks"),
+            data_dir: PathBuf::from("/custom/data"),
+            api_port: 9090,
+            api_prefix: None,
+            api_domain: None,
+            host: "0.0.0.0".to_string(),
+            retention: 14,
+            max_body: 5000,
+            script_timeout: 60,
+            idle_timeout: 10,
+            lua_memory: 128,
+            db_cache: 32,
+            no_watch: false,
+        };
+        let config = ServerConfig::from(args);
+        assert_eq!(config.port, 8080);
+        assert_eq!(config.host, "0.0.0.0");
+        assert_eq!(config.mocks_dir, PathBuf::from("/custom/mocks"));
+        assert_eq!(config.data_dir, PathBuf::from("/custom/data"));
+        assert_eq!(config.retention_days, 14);
+        assert_eq!(config.max_body_size, 5000);
+        assert_eq!(config.script_timeout, std::time::Duration::from_secs(60));
+        assert_eq!(config.lua_memory_mb, 128);
+        assert_eq!(config.db_cache_mb, 32);
+        assert!(config.watch_enabled);
+    }
+}

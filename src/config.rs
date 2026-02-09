@@ -70,3 +70,40 @@ impl ServerConfig {
         self.data_dir.join("mockserver.db")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_server_config_default_values() {
+        let config = ServerConfig::default();
+        assert_eq!(config.port, 3000);
+        assert_eq!(config.host, "127.0.0.1");
+        assert_eq!(config.mocks_dir, PathBuf::from("./.mockserver/mocks"));
+        assert_eq!(config.data_dir, PathBuf::from("./.mockserver/data"));
+        assert!(matches!(
+            config.api_routing,
+            ApiRoutingMode::SeparatePort { port: 3001 }
+        ));
+        assert_eq!(config.retention_days, 7);
+        assert_eq!(config.max_body_size, 10 * 1024 * 1024);
+        assert_eq!(config.script_timeout, Duration::from_secs(30));
+        assert_eq!(config.idle_timeout, Duration::from_secs(30 * 60));
+        assert_eq!(config.lua_memory_mb, 64);
+        assert_eq!(config.db_cache_mb, 64);
+        assert!(config.watch_enabled);
+    }
+
+    #[test]
+    fn test_db_path_construction() {
+        let config = ServerConfig {
+            data_dir: PathBuf::from("/tmp/test-data"),
+            ..Default::default()
+        };
+        assert_eq!(
+            config.db_path(),
+            PathBuf::from("/tmp/test-data/mockserver.db")
+        );
+    }
+}
