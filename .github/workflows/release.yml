@@ -168,7 +168,7 @@ jobs:
           VERSION="${{ needs.validate.outputs.version }}"
 
           for dir in artifacts/binary-*; do
-            TARGET=$(cat "$dir/target.txt")
+            TARGET=$(tr -d '\r\n' < "$dir/target.txt")
             echo "Packaging $TARGET..."
 
             # Copy license files to artifact directory
