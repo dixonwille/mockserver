@@ -1,0 +1,29 @@
+{
+  "london": [
+    { "day": 1, "high_c": 14, "low_c": 8, "condition": "rain" },
+    { "day": 2, "high_c": 13, "low_c": 7, "condition": "cloudy" },
+    { "day": 3, "high_c": 15, "low_c": 9, "condition": "partly cloudy" },
+    { "day": 4, "high_c": 16, "low_c": 10, "condition": "sunny" },
+    { "day": 5, "high_c": 14, "low_c": 8, "condition": "rain" },
+    { "day": 6, "high_c": 12, "low_c": 6, "condition": "cloudy" },
+    { "day": 7, "high_c": 13, "low_c": 7, "condition": "partly cloudy" }
+  ],
+  "tokyo": [
+    { "day": 1, "high_c": 24, "low_c": 18, "condition": "sunny" },
+    { "day": 2, "high_c": 25, "low_c": 19, "condition": "sunny" },
+    { "day": 3, "high_c": 22, "low_c": 17, "condition": "rain" },
+    { "day": 4, "high_c": 23, "low_c": 18, "condition": "cloudy" },
+    { "day": 5, "high_c": 26, "low_c": 20, "condition": "sunny" },
+    { "day": 6, "high_c": 24, "low_c": 18, "condition": "partly cloudy" },
+    { "day": 7, "high_c": 25, "low_c": 19, "condition": "sunny" }
+  ],
+  "new york": [
+    { "day": 1, "high_c": 20, "low_c": 14, "condition": "sunny" },
+    { "day": 2, "high_c": 19, "low_c": 13, "condition": "partly cloudy" },
+    { "day": 3, "high_c": 17, "low_c": 11, "condition": "rain" },
+    { "day": 4, "high_c": 21, "low_c": 15, "condition": "sunny" },
+    { "day": 5, "high_c": 22, "low_c": 16, "condition": "sunny" },
+    { "day": 6, "high_c": 18, "low_c": 12, "condition": "cloudy" },
+    { "day": 7, "high_c": 20, "low_c": 14, "condition": "partly cloudy" }
+  ]
+}

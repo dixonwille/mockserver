@@ -11,14 +11,37 @@ use crate::error::{Error, Result};
 use crate::lua::modules::{DomainState, register_modules};
 use crate::lua::sandbox::{configure_package_path, sandbox_lua};
 use dashmap::DashMap;
-use mlua::{Function, Lua, RegistryKey, Table, Value};
+use mlua::{Function, HookTriggers, Lua, RegistryKey, Table, Value, VmState};
 use std::collections::HashMap;
+use std::fmt;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant};
 use tracing::{debug, info, warn};
+
+/// Custom error type for script timeouts, used with `mlua::Error::external()`.
+/// Detected via `downcast_ref::<ScriptTimeoutError>()` for type-safe matching.
+#[derive(Debug)]
+struct ScriptTimeoutError;
+
+impl fmt::Display for ScriptTimeoutError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "script execution timed out")
+    }
+}
+
+impl std::error::Error for ScriptTimeoutError {}
+
+/// Check whether an mlua::Error (possibly wrapped in CallbackError layers) is a timeout.
+fn is_timeout_error(err: &mlua::Error) -> bool {
+    match err {
+        mlua::Error::CallbackError { cause, .. } => is_timeout_error(cause),
+        mlua::Error::ExternalError(e) => e.downcast_ref::<ScriptTimeoutError>().is_some(),
+        _ => false,
+    }
+}
 
 /// Configuration for Lua runtime pools
 #[derive(Debug, Clone)]
@@ -52,6 +75,10 @@ struct LuaRuntime {
     lua: Lua,
     /// Registry key for the handle function (survives GC)
     handle_key: RegistryKey,
+    /// Reference time for deadline math (monotonic)
+    created_at: Instant,
+    /// Deadline in nanos since `created_at`; 0 means disabled
+    timeout_deadline: Arc<AtomicU64>,
 }
 
 /// Pool of Lua runtimes for a single domain
@@ -117,6 +144,27 @@ impl DomainPool {
             lua.set_memory_limit(self.memory_limit)?;
         }
 
+        // Set up instruction-count hook for timeout enforcement.
+        // Uses set_global_hook so the hook propagates to coroutines created by call_async.
+        let created_at = Instant::now();
+        let timeout_deadline = Arc::new(AtomicU64::new(0));
+        {
+            let deadline = Arc::clone(&timeout_deadline);
+            lua.set_global_hook(
+                HookTriggers::new().every_nth_instruction(4096),
+                move |_lua, _debug| {
+                    let dl = deadline.load(Ordering::Relaxed);
+                    if dl > 0 {
+                        let elapsed_nanos = created_at.elapsed().as_nanos() as u64;
+                        if elapsed_nanos >= dl {
+                            return Err(mlua::Error::external(ScriptTimeoutError));
+                        }
+                    }
+                    Ok(VmState::Continue)
+                },
+            )?;
+        }
+
         // Apply sandboxing
         sandbox_lua(&lua)?;
 
@@ -138,7 +186,12 @@ impl DomainPool {
             .map_err(|_| Error::MissingHandleFunction(self.domain.clone()))?;
         let handle_key = lua.create_registry_value(handle_fn)?;
 
-        Ok(LuaRuntime { lua, handle_key })
+        Ok(LuaRuntime {
+            lua,
+            handle_key,
+            created_at,
+            timeout_deadline,
+        })
     }
 
     /// Acquire a Lua runtime from the pool, creating one if needed
@@ -220,6 +273,28 @@ impl<'a> PoolGuard<'a> {
     /// Get reference to the handle function registry key
     fn handle_key(&self) -> &RegistryKey {
         &self.runtime.as_ref().unwrap().handle_key
+    }
+
+    /// Arm the timeout deadline so the instruction hook will fire after `timeout`.
+    fn arm_timeout(&self, timeout: Duration) {
+        let rt = self.runtime.as_ref().unwrap();
+        let deadline_nanos = (rt.created_at.elapsed() + timeout).as_nanos() as u64;
+        rt.timeout_deadline.store(deadline_nanos, Ordering::Relaxed);
+    }
+
+    /// Disarm the timeout (set deadline to 0 so the hook becomes a no-op).
+    fn disarm_timeout(&self) {
+        let rt = self.runtime.as_ref().unwrap();
+        rt.timeout_deadline.store(0, Ordering::Relaxed);
+    }
+
+    /// Discard this runtime without returning it to the pool.
+    /// Used after a timeout leaves the VM in a potentially inconsistent state.
+    fn discard(&mut self) {
+        if let Some(_runtime) = self.runtime.take() {
+            self.pool.in_use.fetch_sub(1, Ordering::SeqCst);
+            // runtime is dropped here — NOT pushed back to available
+        }
     }
 }
 
@@ -411,10 +486,27 @@ impl ScriptManager {
         let pool = self.get_or_create_pool(domain).await?;
 
         // Acquire runtime from pool (only locks this domain's pool)
-        let guard = pool.acquire()?;
+        let mut guard = pool.acquire()?;
 
-        // Execute handler
-        execute_handler_async(guard.lua(), guard.handle_key(), &request, self.timeout).await
+        // Arm the instruction-hook deadline
+        guard.arm_timeout(self.timeout);
+
+        // Execute handler with tokio timeout wrapping the call
+        let result =
+            execute_handler_async(guard.lua(), guard.handle_key(), &request, self.timeout).await;
+
+        // Disarm before returning to pool
+        guard.disarm_timeout();
+
+        match result {
+            Ok(response) => Ok(response),
+            Err(Error::ScriptTimeout(_)) => {
+                warn!(domain, "Script timed out — discarding Lua VM");
+                guard.discard();
+                result
+            }
+            Err(_) => result,
+        }
     }
 
     /// Get existing pool or create new one (with _default fallback)
@@ -535,7 +627,7 @@ async fn execute_handler_async(
     lua: &Lua,
     handle_key: &RegistryKey,
     request: &LuaRequest,
-    _timeout: Duration,
+    timeout: Duration,
 ) -> Result<LuaResponse> {
     // Build request table
     let request_table = lua.create_table()?;
@@ -561,10 +653,15 @@ async fn execute_handler_async(
     // Get handle function from registry (survives GC)
     let handle: Function = lua.registry_value(handle_key)?;
 
-    // Execute asynchronously to support async Lua functions (e.g., delay.sleep)
-    let result: Value = handle.call_async(request_table).await?;
-
-    parse_response(result)
+    // Execute with a tokio timeout to catch long async operations (e.g. delay.sleep).
+    // The instruction hook catches CPU-bound loops; this catches awaiting futures.
+    let domain = request.domain.clone();
+    match tokio::time::timeout(timeout, handle.call_async::<Value>(request_table)).await {
+        Ok(Ok(result)) => parse_response(result),
+        Ok(Err(lua_err)) if is_timeout_error(&lua_err) => Err(Error::ScriptTimeout(domain)),
+        Ok(Err(lua_err)) => Err(Error::Lua(lua_err)),
+        Err(_elapsed) => Err(Error::ScriptTimeout(domain)),
+    }
 }
 
 /// Parse a Lua response table into LuaResponse
@@ -796,5 +893,148 @@ mod tests {
         let stats = manager.pool_stats("stats.example.com").unwrap();
         assert_eq!(stats.available, 1); // One pre-created during load
         assert_eq!(stats.in_use, 0);
+    }
+
+    #[tokio::test]
+    async fn test_script_timeout_cpu_loop() {
+        let temp_dir = TempDir::new().unwrap();
+        create_test_domain(
+            &temp_dir,
+            "loop.example.com",
+            r#"
+            function handle(request)
+                while true do local x = 1 end
+                return { status = 200 }
+            end
+            "#,
+        );
+
+        let manager = ScriptManager::new(temp_dir.path().to_path_buf(), 64, Duration::from_secs(1));
+        manager.load_domain("loop.example.com").await.unwrap();
+
+        let request = LuaRequest {
+            method: "GET".to_string(),
+            path: "/".to_string(),
+            query: HashMap::new(),
+            headers: HashMap::new(),
+            body: String::new(),
+            domain: "loop.example.com".to_string(),
+        };
+
+        let result = manager.execute(request).await;
+        assert!(
+            matches!(result, Err(Error::ScriptTimeout(_))),
+            "Expected ScriptTimeout, got: {result:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_script_timeout_async_sleep() {
+        let temp_dir = TempDir::new().unwrap();
+        create_test_domain(
+            &temp_dir,
+            "sleep.example.com",
+            r#"
+            local delay = require("delay")
+            function handle(request)
+                delay.sleep(60000)
+                return { status = 200 }
+            end
+            "#,
+        );
+
+        let manager = ScriptManager::new(temp_dir.path().to_path_buf(), 64, Duration::from_secs(1));
+        manager.load_domain("sleep.example.com").await.unwrap();
+
+        let request = LuaRequest {
+            method: "GET".to_string(),
+            path: "/".to_string(),
+            query: HashMap::new(),
+            headers: HashMap::new(),
+            body: String::new(),
+            domain: "sleep.example.com".to_string(),
+        };
+
+        let result = manager.execute(request).await;
+        assert!(
+            matches!(result, Err(Error::ScriptTimeout(_))),
+            "Expected ScriptTimeout, got: {result:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_script_within_timeout_succeeds() {
+        let temp_dir = TempDir::new().unwrap();
+        create_test_domain(
+            &temp_dir,
+            "fast.example.com",
+            r#"
+            function handle(request)
+                return { status = 200, body = "ok" }
+            end
+            "#,
+        );
+
+        let manager = ScriptManager::new(temp_dir.path().to_path_buf(), 64, Duration::from_secs(2));
+        manager.load_domain("fast.example.com").await.unwrap();
+
+        let request = LuaRequest {
+            method: "GET".to_string(),
+            path: "/".to_string(),
+            query: HashMap::new(),
+            headers: HashMap::new(),
+            body: String::new(),
+            domain: "fast.example.com".to_string(),
+        };
+
+        let response = manager.execute(request).await.unwrap();
+        assert_eq!(response.status, 200);
+        assert_eq!(response.body, "ok");
+    }
+
+    #[tokio::test]
+    async fn test_vm_discarded_after_timeout() {
+        let temp_dir = TempDir::new().unwrap();
+        create_test_domain(
+            &temp_dir,
+            "discard.example.com",
+            r#"
+            function handle(request)
+                while true do local x = 1 end
+                return { status = 200 }
+            end
+            "#,
+        );
+
+        let manager = ScriptManager::new(temp_dir.path().to_path_buf(), 64, Duration::from_secs(1));
+        manager.load_domain("discard.example.com").await.unwrap();
+
+        // Before: 1 available, 0 in use
+        let before = manager.pool_stats("discard.example.com").unwrap();
+        assert_eq!(before.available, 1);
+        assert_eq!(before.in_use, 0);
+
+        let request = LuaRequest {
+            method: "GET".to_string(),
+            path: "/".to_string(),
+            query: HashMap::new(),
+            headers: HashMap::new(),
+            body: String::new(),
+            domain: "discard.example.com".to_string(),
+        };
+
+        let result = manager.execute(request).await;
+        assert!(matches!(result, Err(Error::ScriptTimeout(_))));
+
+        // After: VM was discarded, not returned to available
+        let after = manager.pool_stats("discard.example.com").unwrap();
+        assert_eq!(
+            after.available, 0,
+            "Timed-out VM should not be returned to pool"
+        );
+        assert_eq!(
+            after.in_use, 0,
+            "in_use should be decremented after discard"
+        );
     }
 }

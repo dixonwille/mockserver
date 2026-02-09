@@ -102,6 +102,11 @@
               cargo-about
               cargo-llvm-cov
 
+              # Integration testing
+              uv
+              python3
+              ty
+
               # Licensing
               reuse
             ];

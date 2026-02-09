@@ -12,7 +12,7 @@ SPDX-License-Identifier = "AGPL-3.0-only"
 
 # Generated templates for users - CC0-1.0 (public domain)
 [[annotations]]
-path = "src/templates/**"
+path = ["src/templates/**", "examples/**"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 mockserver contributors"
 SPDX-License-Identifier = "CC0-1.0"
@@ -61,3 +61,17 @@ path = "Containerfile"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 mockserver contributors"
 SPDX-License-Identifier = "MIT"
+
+# Integration tests and config - MIT
+[[annotations]]
+path = ["tests/**", "pyproject.toml"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 mockserver contributors"
+SPDX-License-Identifier = "MIT"
+
+# UV lock file - CC0-1.0 (machine-generated)
+[[annotations]]
+path = "uv.lock"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 mockserver contributors"
+SPDX-License-Identifier = "CC0-1.0"

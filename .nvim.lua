@@ -1,6 +1,6 @@
 require("conform").formatters_by_ft.rust = { "rustfmt" }
 require("conform").formatters_by_ft.toml = { "taplo" }
-vim.lsp.enable({ "rust_analyzer" })
+vim.lsp.enable({ "rust_analyzer", "ty" })
 
 -- License header helpers
 local function add_license_header(file)

@@ -1,0 +1,17 @@
+[project]
+name = "mockserver-integration-tests"
+version = "0.1.0"
+description = "Integration tests for mockserver"
+requires-python = ">=3.11"
+dependencies = [
+    "pytest>=8.0",
+    "httpx>=0.27",
+    "pytest-timeout>=2.3",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/integration"]
+timeout = 60
+markers = [
+    "slow: marks tests that take more than 5 seconds",
+]

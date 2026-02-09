@@ -28,3 +28,9 @@ Thumbs.db
 /target
 
 THIRD_PARTY_LICENSES
+
+# Python
+__pycache__/
+.pytest_cache/
+.venv/
+*.pyc

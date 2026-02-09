@@ -101,3 +101,21 @@ jobs:
       - name: Run tests
         if: ${{ matrix.run-on-pr || github.event_name == 'push' }}
         run: cargo test --all-features
+
+  integration-test:
+    name: Integration Tests
+    needs: [build-and-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Build release binary
+        run: cargo build --release
+      - uses: astral-sh/setup-uv@v5
+      - name: Run integration tests
+        env:
+          MOCKSERVER_BIN: target/release/mockserver
+        run: uv run --locked pytest tests/integration -v --timeout=120

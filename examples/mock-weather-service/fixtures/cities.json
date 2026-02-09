@@ -1,0 +1,23 @@
+{
+  "london": {
+    "city": "london",
+    "temp_c": 12,
+    "condition": "cloudy",
+    "humidity": 78,
+    "wind_kph": 15
+  },
+  "tokyo": {
+    "city": "tokyo",
+    "temp_c": 22,
+    "condition": "sunny",
+    "humidity": 55,
+    "wind_kph": 8
+  },
+  "new york": {
+    "city": "new york",
+    "temp_c": 18,
+    "condition": "partly cloudy",
+    "humidity": 62,
+    "wind_kph": 20
+  }
+}
