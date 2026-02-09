@@ -164,7 +164,8 @@ jobs:
 
       - name: Package releases
         run: |
-          mkdir -p release
+          RELEASE_DIR="$(pwd)/release"
+          mkdir -p "$RELEASE_DIR"
           VERSION="${{ needs.validate.outputs.version }}"
 
           for dir in artifacts/binary-*; do
@@ -178,18 +179,18 @@ jobs:
             if [[ "$TARGET" == *"windows"* ]]; then
               # Windows: create zip
               ARCHIVE="mockserver-${VERSION}-${TARGET}.zip"
-              (cd "$dir" && zip -j "../release/$ARCHIVE" mockserver.exe LICENSE THIRD_PARTY_LICENSES)
+              (cd "$dir" && zip -j "$RELEASE_DIR/$ARCHIVE" mockserver.exe LICENSE THIRD_PARTY_LICENSES)
             else
               # Unix: create tar.gz
               ARCHIVE="mockserver-${VERSION}-${TARGET}.tar.gz"
-              tar -czvf "release/$ARCHIVE" -C "$dir" mockserver LICENSE THIRD_PARTY_LICENSES
+              tar -czvf "$RELEASE_DIR/$ARCHIVE" -C "$dir" mockserver LICENSE THIRD_PARTY_LICENSES
             fi
           done
 
           # Generate SHA256SUMS
-          (cd release && sha256sum * > SHA256SUMS.txt)
+          (cd "$RELEASE_DIR" && sha256sum * > SHA256SUMS.txt)
           echo "Generated SHA256SUMS.txt:"
-          cat release/SHA256SUMS.txt
+          cat "$RELEASE_DIR/SHA256SUMS.txt"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
