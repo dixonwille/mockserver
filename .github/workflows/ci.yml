@@ -3,8 +3,37 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".gitignore"
+      - "scripts/**"
+      - "flake.nix"
+      - "flake.lock"
+      - ".envrc"
+      - ".nvim.lua"
+      - ".config/about.toml"
+      - ".config/about.hbs"
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".gitignore"
+      - "scripts/**"
+      - "flake.nix"
+      - "flake.lock"
+      - ".envrc"
+      - ".nvim.lua"
+      - ".config/about.toml"
+      - ".config/about.hbs"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
@@ -65,23 +94,28 @@ jobs:
     runs-on: ${{ matrix.os }}
     if: ${{ always() && !cancelled() && !contains(needs.*.result, 'failure') }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Check if should run
+        id: check
         if: ${{ matrix.run-on-pr || github.event_name == 'push' }}
+        run: echo "run=true" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.run == 'true'
 
       - uses: dtolnay/rust-toolchain@stable
-        if: ${{ matrix.run-on-pr || github.event_name == 'push' }}
+        if: steps.check.outputs.run == 'true'
 
       - uses: Swatinem/rust-cache@v2
-        if: ${{ matrix.run-on-pr || github.event_name == 'push' }}
+        if: steps.check.outputs.run == 'true'
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Build release
-        if: ${{ matrix.run-on-pr || github.event_name == 'push' }}
+        if: steps.check.outputs.run == 'true'
         run: cargo build --release
 
       - name: Verify static linking (Linux)
-        if: ${{ (matrix.run-on-pr || github.event_name == 'push') && runner.os == 'Linux' }}
+        if: steps.check.outputs.run == 'true' && runner.os == 'Linux'
         run: |
           echo "Checking dynamic dependencies..."
           ldd target/release/mockserver
@@ -90,7 +124,7 @@ jobs:
           echo "Static linking verified!"
 
       - name: Verify static linking (macOS)
-        if: ${{ (matrix.run-on-pr || github.event_name == 'push') && runner.os == 'macOS' }}
+        if: steps.check.outputs.run == 'true' && runner.os == 'macOS'
         run: |
           echo "Checking dynamic dependencies..."
           otool -L target/release/mockserver
@@ -99,8 +133,16 @@ jobs:
           echo "Static linking verified!"
 
       - name: Run tests
-        if: ${{ matrix.run-on-pr || github.event_name == 'push' }}
+        if: steps.check.outputs.run == 'true'
         run: cargo test --all-features
+
+      - name: Upload binary for integration tests
+        if: steps.check.outputs.run == 'true' && runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-binary
+          path: target/release/mockserver
+          retention-days: 1
 
   integration-test:
     name: Integration Tests
@@ -108,13 +150,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/download-artifact@v4
         with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-      - name: Build release binary
-        run: cargo build --release
-      - uses: astral-sh/setup-uv@v5
+          name: integration-test-binary
+          path: target/release/
+      - run: chmod +x target/release/mockserver
+      - uses: astral-sh/setup-uv@v7
       - name: Run integration tests
         env:
           MOCKSERVER_BIN: target/release/mockserver

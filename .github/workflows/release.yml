@@ -5,6 +5,11 @@ on:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+*"
 
+permissions: {}
+
+concurrency:
+  group: release
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -12,10 +17,12 @@ jobs:
   validate:
     name: Validate
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Extract version from tag
         id: version
@@ -39,6 +46,8 @@ jobs:
   build:
     name: Build (${{ matrix.target }})
     needs: validate
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -60,22 +69,22 @@ jobs:
             cross: false
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
           fetch-tags: true
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@4be9e76fd7c4901c61fb841f559994984270fce7 # stable
         with:
           targets: ${{ matrix.target }}
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2.8.2
         with:
           key: ${{ matrix.target }}
 
       - name: Install cross
         if: matrix.cross
-        run: cargo install cross --git https://github.com/cross-rs/cross
+        run: cargo install cross --git https://github.com/cross-rs/cross --tag v0.2.5
 
       - name: Build (native)
         if: "!matrix.cross"
@@ -101,31 +110,55 @@ jobs:
           Set-Content -Path artifacts/target.txt -Value "${{ matrix.target }}"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: binary-${{ matrix.target }}
           path: artifacts/
           retention-days: 1
 
+  licenses:
+    name: Generate Licenses
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: dtolnay/rust-toolchain@4be9e76fd7c4901c61fb841f559994984270fce7 # stable
+
+      - name: Install cargo-about
+        run: cargo install cargo-about --version 0.8.4
+
+      - name: Generate license files
+        run: |
+          cp LICENSES/AGPL-3.0-only.txt LICENSE
+          cargo about generate -c .config/about.toml .config/about.hbs > THIRD_PARTY_LICENSES
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: licenses
+          path: |
+            LICENSE
+            THIRD_PARTY_LICENSES
+          retention-days: 1
+
   release:
     name: Create Release
-    needs: [validate, build]
+    needs: [validate, build, licenses]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - uses: dtolnay/rust-toolchain@stable
-
-      - name: Install cargo-about
-        run: cargo install cargo-about
-
-      - name: Generate third-party licenses
-        run: cargo about generate -c .config/about.toml .config/about.hbs > THIRD_PARTY_LICENSES
+      - name: Download license files
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: licenses
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           path: artifacts
           pattern: binary-*
@@ -140,7 +173,7 @@ jobs:
             echo "Packaging $TARGET..."
 
             # Copy license files to artifact directory
-            cp LICENSES/AGPL-3.0-only.txt "$dir/LICENSE"
+            cp LICENSE "$dir/"
             cp THIRD_PARTY_LICENSES "$dir/"
 
             if [[ "$TARGET" == *"windows"* ]]; then
@@ -160,7 +193,7 @@ jobs:
           cat release/SHA256SUMS.txt
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         with:
           name: v${{ needs.validate.outputs.version }}
           draft: false
@@ -173,26 +206,21 @@ jobs:
 
   container:
     name: Build Container
-    needs: [validate, build]
+    needs: [validate, build, licenses]
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - uses: dtolnay/rust-toolchain@stable
-
-      - name: Install cargo-about
-        run: cargo install cargo-about
-
-      - name: Generate license files
-        run: |
-          cp LICENSES/AGPL-3.0-only.txt LICENSE
-          cargo about generate -c .config/about.toml .config/about.hbs > THIRD_PARTY_LICENSES
+      - name: Download license files
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: licenses
 
       - name: Download Linux artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           path: artifacts
           pattern: binary-*-linux-*
@@ -213,11 +241,10 @@ jobs:
           ls -la binaries/*/
 
       - name: Set up QEMU for multi-arch builds
-        run: |
-          docker run --rm --privileged docker.io/tonistiigi/binfmt --install all
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
 
       - name: Log in to GitHub Container Registry
-        uses: redhat-actions/podman-login@v1
+        uses: redhat-actions/podman-login@4934294ad0449894bcd1e9f191899d7292469603 # v1.7
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -225,16 +252,18 @@ jobs:
 
       - name: Build multi-arch container
         id: build
-        uses: redhat-actions/buildah-build@v2
+        uses: redhat-actions/buildah-build@7a95fa7ee0f02d552a32753e7414641a04307056 # v2.13
         with:
           image: mockserver
-          tags: ${{ needs.validate.outputs.version }} latest
+          tags: >-
+            ${{ needs.validate.outputs.version }}
+            ${{ !contains(needs.validate.outputs.version, '-') && 'latest' || '' }}
           platforms: linux/amd64, linux/arm64
           containerfiles: ./Containerfile
           context: .
 
       - name: Push to GitHub Container Registry
-        uses: redhat-actions/push-to-registry@v2
+        uses: redhat-actions/push-to-registry@5ed88d269cf581ea9ef6dd6806d01562096bee9c # v2.8
         with:
           image: ${{ steps.build.outputs.image }}
           tags: ${{ steps.build.outputs.tags }}
