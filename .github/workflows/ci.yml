@@ -84,17 +84,23 @@ jobs:
           - name: Linux x86_64
             os: ubuntu-latest
             target: x86_64-unknown-linux-musl
+            cargo: cargo
             run-on-pr: true
+            upload-for-integration: true
           - name: Linux aarch64
             os: ubuntu-latest
             target: aarch64-unknown-linux-musl
-            cross: true
+            cargo: cross
             run-on-pr: false
           - name: macOS
             os: macos-latest
+            target: aarch64-apple-darwin
+            cargo: cargo
             run-on-pr: false
           - name: Windows
             os: windows-latest
+            target: x86_64-pc-windows-msvc
+            cargo: cargo
             run-on-pr: false
     runs-on: ${{ matrix.os }}
     if: ${{ always() && !cancelled() && !contains(needs.*.result, 'failure') }}
@@ -112,7 +118,7 @@ jobs:
         if: steps.check.outputs.run == 'true'
 
       - name: Add Rust target
-        if: steps.check.outputs.run == 'true' && matrix.target
+        if: steps.check.outputs.run == 'true'
         run: rustup target add ${{ matrix.target }}
 
       - name: Install musl-tools
@@ -120,51 +126,41 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y musl-tools
 
       - name: Install cross
-        if: steps.check.outputs.run == 'true' && matrix.cross
+        if: steps.check.outputs.run == 'true' && matrix.cargo == 'cross'
         run: cargo install cross --git https://github.com/cross-rs/cross --tag v0.2.5
 
       - uses: Swatinem/rust-cache@v2
         if: steps.check.outputs.run == 'true'
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
-          key: ${{ matrix.target || 'native' }}
+          key: ${{ matrix.target }}
 
       - name: Build release
-        if: steps.check.outputs.run == 'true' && !matrix.cross
-        run: cargo build --release ${{ matrix.target && format('--target {0}', matrix.target) || '' }}
+        if: steps.check.outputs.run == 'true'
+        run: ${{ matrix.cargo }} build --release --target ${{ matrix.target }}
 
-      - name: Build release (cross)
-        if: steps.check.outputs.run == 'true' && matrix.cross
-        run: cross build --release --target ${{ matrix.target }}
-
-      - name: Verify static linking (Linux)
-        if: steps.check.outputs.run == 'true' && runner.os == 'Linux' && !matrix.cross
+      - name: Verify static linking
+        if: steps.check.outputs.run == 'true' && runner.os != 'Windows'
+        shell: bash
         run: |
           BINARY="target/${{ matrix.target }}/release/mockserver"
-          echo "Checking dynamic dependencies..."
-          if ldd "$BINARY" 2>&1 | grep -q "not a dynamic executable\|statically linked"; then
-            echo "Binary is fully static!"
-          else
-            ldd "$BINARY"
-            echo "::error::Binary is not fully static"
-            exit 1
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            echo "Checking binary type..."
+            file "$BINARY"
+            file "$BINARY" | grep -qE "statically linked|static-pie linked" || { echo "::error::Binary is not fully static"; exit 1; }
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+            echo "Checking dynamic dependencies..."
+            otool -L "$BINARY"
+            otool -L "$BINARY" | grep -qiE "(sqlite|lua)" && { echo "::error::SQLite or Lua dynamically linked"; exit 1; }
           fi
-
-      - name: Verify static linking (macOS)
-        if: steps.check.outputs.run == 'true' && runner.os == 'macOS'
-        run: |
-          echo "Checking dynamic dependencies..."
-          otool -L target/release/mockserver
-          echo "Verifying SQLite and Lua are NOT dynamically linked..."
-          ! otool -L target/release/mockserver | grep -qiE "(sqlite|lua)" || exit 1
           echo "Static linking verified!"
 
       - name: Run tests
-        if: steps.check.outputs.run == 'true' && !matrix.cross
-        run: cargo test --all-features ${{ matrix.target && format('--target {0}', matrix.target) || '' }}
+        if: steps.check.outputs.run == 'true'
+        run: ${{ matrix.cargo }} test --all-features --target ${{ matrix.target }}
 
       - name: Upload binary for integration tests
-        if: steps.check.outputs.run == 'true' && matrix.target == 'x86_64-unknown-linux-musl'
+        if: steps.check.outputs.run == 'true' && matrix.upload-for-integration
         uses: actions/upload-artifact@v6
         with:
           name: integration-test-binary

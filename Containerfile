@@ -1,7 +1,7 @@
 # Multi-arch container for mockserver
 # Built using Podman/Buildah with distroless base for minimal attack surface
 
-FROM gcr.io/distroless/cc-debian12:nonroot
+FROM gcr.io/distroless/static-debian12:nonroot
 
 ARG TARGETARCH
 

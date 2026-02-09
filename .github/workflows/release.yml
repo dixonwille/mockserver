@@ -54,19 +54,19 @@ jobs:
         include:
           - target: x86_64-unknown-linux-musl
             os: ubuntu-latest
-            cross: false
+            cargo: cargo
           - target: aarch64-unknown-linux-musl
             os: ubuntu-latest
-            cross: true
+            cargo: cross
           - target: x86_64-apple-darwin
             os: macos-latest
-            cross: false
+            cargo: cargo
           - target: aarch64-apple-darwin
             os: macos-latest
-            cross: false
+            cargo: cargo
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-            cross: false
+            cargo: cargo
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -87,16 +87,11 @@ jobs:
           key: ${{ matrix.target }}
 
       - name: Install cross
-        if: matrix.cross
+        if: matrix.cargo == 'cross'
         run: cargo install cross --git https://github.com/cross-rs/cross --tag v0.2.5
 
-      - name: Build (native)
-        if: "!matrix.cross"
-        run: cargo build --release --target ${{ matrix.target }}
-
-      - name: Build (cross)
-        if: matrix.cross
-        run: cross build --release --target ${{ matrix.target }}
+      - name: Build
+        run: ${{ matrix.cargo }} build --release --target ${{ matrix.target }}
 
       - name: Prepare artifact (Unix)
         if: runner.os != 'Windows'
