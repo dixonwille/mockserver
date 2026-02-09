@@ -25,7 +25,7 @@ All endpoints are prefixed with `/api/`.
 | GET | `/api/requests/{id}/response` | Get the response for a request |
 | DELETE | `/api/requests` | Clear all recorded requests |
 | POST | `/api/config/reload` | Trigger Lua script reload |
-| POST | `/api/cleanup` | Run retention cleanup |
+| POST | `/api/cleanup` | Delete requests before a given date (or all) |
 | GET | `/api/healthz` | Health check |
 | GET | `/api/about` | License and source information |
 
@@ -110,11 +110,39 @@ Reloads all currently loaded Lua domains from disk.
 
 ## POST /api/cleanup
 
-Runs retention cleanup (deletes requests older than `--retention` days).
+Deletes recorded requests based on an explicit `before` parameter. Requires a JSON body.
+
+### Request Body
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `before` | `0` or ISO 8601 string | `0` deletes all requests; an ISO 8601 date deletes everything received before that date |
+
+### Examples
+
+Delete all requests:
+
+```bash
+curl -X POST http://localhost:3001/api/cleanup \
+  -H "Content-Type: application/json" \
+  -d '{"before": 0}'
+```
+
+Delete requests older than a specific date:
+
+```bash
+curl -X POST http://localhost:3001/api/cleanup \
+  -H "Content-Type: application/json" \
+  -d '{"before": "2026-01-01T00:00:00Z"}'
+```
+
+### Response
 
 ```json
 { "deleted": 15 }
 ```
+
+Returns `422` if the body is missing or malformed. Returns `400` if `before` is a non-zero integer.
 
 ## GET /api/healthz
 
@@ -150,7 +178,9 @@ All errors follow this shape:
 | Status | Error | When |
 |--------|-------|------|
 | 400 | `Invalid UUID` | Bad ID format in `/api/requests/{id}` |
+| 400 | `Invalid value` | Non-zero integer in `/api/cleanup` `before` field |
 | 404 | `Not found` | Request or response not found |
+| 422 | `Unprocessable Entity` | Missing or malformed JSON body |
 | 500 | `Database error` | Database operation failed |
 
 ## Related Documentation

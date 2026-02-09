@@ -231,6 +231,11 @@ pub async fn delete_all_requests(conn: &Connection) -> Result<u64> {
 /// Delete requests older than retention period
 pub async fn cleanup_old_requests(conn: &Connection, retention_days: u32) -> Result<u64> {
     let cutoff = Utc::now() - Duration::days(retention_days as i64);
+    cleanup_requests_before(conn, cutoff).await
+}
+
+/// Delete requests received before the given cutoff time
+pub async fn cleanup_requests_before(conn: &Connection, cutoff: DateTime<Utc>) -> Result<u64> {
     conn.call(move |conn| -> tokio_rusqlite::rusqlite::Result<u64> {
         let count = conn.execute(
             "DELETE FROM requests WHERE received_at < ?1",
@@ -697,5 +702,38 @@ mod tests {
         assert_eq!(stored.headers["content-type"], "application/json");
         assert_eq!(stored.headers["authorization"], "Bearer token123");
         assert_eq!(stored.headers["x-custom"], "value");
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_requests_before_cutoff() {
+        let conn = test_db().await;
+
+        // Store two requests
+        let old_request = test_request("example.com", "GET", "/old");
+        let new_request = test_request("example.com", "GET", "/new");
+        store_request(&conn, &old_request).await.unwrap();
+        store_request(&conn, &new_request).await.unwrap();
+
+        // Backdate the old request to 10 days ago
+        let old_time = Utc::now() - Duration::days(10);
+        conn.call(move |conn| -> tokio_rusqlite::rusqlite::Result<()> {
+            conn.execute(
+                "UPDATE requests SET received_at = ?1 WHERE id = ?2",
+                params![old_time.to_rfc3339(), old_request.id.to_string()],
+            )?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+
+        // Delete everything older than 5 days ago
+        let cutoff = Utc::now() - Duration::days(5);
+        let deleted = cleanup_requests_before(&conn, cutoff).await.unwrap();
+        assert_eq!(deleted, 1);
+
+        // New request should still exist
+        let remaining = get_requests(&conn, RequestQuery::default()).await.unwrap();
+        assert_eq!(remaining.len(), 1);
+        assert_eq!(remaining[0].path, "/new");
     }
 }

@@ -40,7 +40,7 @@ mockserver serve [OPTIONS]
 | `--api-port` | `MOCKSERVER_API_PORT` | `3001` | Admin API port (default routing mode) |
 | `--api-prefix` | `MOCKSERVER_API_PREFIX` | -- | Serve Admin API at path prefix (disables `--api-port`) |
 | `--api-domain` | `MOCKSERVER_API_DOMAIN` | -- | Serve Admin API at domain (disables `--api-port`). Conflicts with `--api-prefix` |
-| `--retention` | `MOCKSERVER_RETENTION` | `7` | Days to retain request history |
+| `--retention` | `MOCKSERVER_RETENTION` | `7` | Days to retain request history (0 to disable) |
 | `--max-body` | `MOCKSERVER_MAX_BODY` | `10485760` | Max request body size in bytes (10 MB) |
 | `--script-timeout` | `MOCKSERVER_SCRIPT_TIMEOUT` | `30` | Lua script execution timeout in seconds |
 | `--idle-timeout` | `MOCKSERVER_IDLE_TIMEOUT` | `30` | Flush idle domain states after N minutes (0 = disabled) |
@@ -165,7 +165,7 @@ Possible `status` values: `ok`, `missing_init`, `missing_handle`, `error`.
 | Mocks Dir | `./.mockserver/mocks` | Hidden folder, out of the way |
 | Data Dir | `./.mockserver/data` | Keeps DB alongside mocks |
 | Host | `127.0.0.1` | Secure default, localhost only |
-| Retention | 7 days | Reasonable for development |
+| Retention | 7 days | Reasonable for development (0 disables automatic cleanup) |
 | Max Body | 10 MB | Covers most API payloads |
 | Script Timeout | 30 s | Generous for debugging |
 | Idle Timeout | 30 min | Balances memory vs reload latency |

@@ -5,8 +5,9 @@
 //! File watcher module
 //!
 //! Watches the mocks directory for changes and triggers reloads.
-//! Also provides idle domain flushing background task.
+//! Also provides idle domain flushing and retention cleanup background tasks.
 
+use crate::db::cleanup_old_requests;
 use crate::lua::ScriptManager;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::collections::HashSet;
@@ -15,6 +16,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time::Instant;
+use tokio_rusqlite::Connection;
 use tracing::{debug, info, warn};
 
 /// Debounce duration for file changes (100ms)
@@ -231,6 +233,40 @@ pub fn start_idle_flusher(
 ///
 /// The flusher stops when this handle is dropped.
 pub struct IdleFlusherHandle {
+    _task: tokio::task::JoinHandle<()>,
+}
+
+/// Check interval for retention cleanup (1 hour)
+const RETENTION_CHECK_INTERVAL: Duration = Duration::from_secs(60 * 60);
+
+/// Start the retention cleanup background task
+///
+/// Periodically deletes requests older than the configured retention period.
+/// Returns a handle that stops the worker when dropped.
+pub fn start_retention_cleanup(db: Arc<Connection>, retention_days: u32) -> RetentionCleanupHandle {
+    let handle = tokio::spawn(async move {
+        let mut interval = tokio::time::interval(RETENTION_CHECK_INTERVAL);
+        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+        loop {
+            interval.tick().await;
+            match cleanup_old_requests(&db, retention_days).await {
+                Ok(deleted) if deleted > 0 => {
+                    info!(deleted, retention_days, "Retention cleanup completed");
+                }
+                Err(e) => {
+                    warn!(error = %e, "Retention cleanup failed");
+                }
+                _ => {}
+            }
+        }
+    });
+    RetentionCleanupHandle { _task: handle }
+}
+
+/// Handle to the retention cleanup background task
+///
+/// The worker stops when this handle is dropped.
+pub struct RetentionCleanupHandle {
     _task: tokio::task::JoinHandle<()>,
 }
 
@@ -503,5 +539,12 @@ mod tests {
         let idle_timeout = Duration::from_secs(3600); // 1 hour
         let check_interval = (idle_timeout / 2).max(Duration::from_secs(30));
         assert_eq!(check_interval, Duration::from_secs(1800)); // 30 minutes
+    }
+
+    // ==================== retention cleanup interval test ====================
+
+    #[test]
+    fn test_retention_check_interval_is_one_hour() {
+        assert_eq!(RETENTION_CHECK_INTERVAL, Duration::from_secs(3600));
     }
 }

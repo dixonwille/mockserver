@@ -18,7 +18,7 @@ use crate::config::ApiRoutingMode;
 use crate::db::init_database;
 use crate::lua::ScriptManager;
 use crate::server::{AppState, build_domain_dispatch_router, build_mock_router};
-use crate::watcher::{start_idle_flusher, start_watcher};
+use crate::watcher::{start_idle_flusher, start_retention_cleanup, start_watcher};
 
 #[derive(Args)]
 pub struct ServeArgs {
@@ -59,7 +59,7 @@ pub struct ServeArgs {
     #[arg(long, default_value = "127.0.0.1", env = "MOCKSERVER_HOST")]
     host: String,
 
-    /// Days to retain request history
+    /// Days to retain request history (0 to disable cleanup)
     #[arg(long, default_value = "7", env = "MOCKSERVER_RETENTION")]
     retention: u32,
 
@@ -189,9 +189,21 @@ impl ServeArgs {
             None
         };
 
+        // 5b. Start retention cleanup (if enabled)
+        let db = Arc::new(db);
+        let _retention_handle = if config.retention_days > 0 {
+            info!(
+                "Retention cleanup enabled ({} days, checking hourly)",
+                config.retention_days
+            );
+            Some(start_retention_cleanup(db.clone(), config.retention_days))
+        } else {
+            info!("Retention cleanup disabled");
+            None
+        };
+
         // 6. Create application state
         let config = Arc::new(config);
-        let db = Arc::new(db);
         let state = AppState::from_arc(db, scripts.clone(), config.clone());
 
         // 7. Build routers and start servers based on API routing mode

@@ -132,8 +132,8 @@ class MockServer:
     def reload(self) -> httpx.Response:
         return self.api_post("/api/config/reload")
 
-    def cleanup(self) -> httpx.Response:
-        return self.api_post("/api/cleanup")
+    def cleanup(self, before: Any = 0) -> httpx.Response:
+        return self.api_post("/api/cleanup", json={"before": before})
 
     def healthz(self) -> httpx.Response:
         return self.api_get("/api/healthz")
